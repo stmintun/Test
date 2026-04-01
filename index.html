@@ -87,18 +87,30 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
 
         .dashboard-container { padding: 20px 20px 0 20px; max-width: 600px; margin: 0 auto; }
 
-        /* ── Swipe rows ── */
-        .swipe-row { position: relative; overflow: hidden; border-radius: var(--radius-md); margin-bottom: 10px; }
-        .swipe-bg { position: absolute; inset: 0; display: flex; align-items: center; border-radius: var(--radius-md); }
-        .swipe-bg-edit { background: linear-gradient(90deg, #22c55e, #16a34a); justify-content: flex-start; padding-left: 20px; }
-        .swipe-bg-delete { background: linear-gradient(90deg, #ef4444, #dc2626); justify-content: flex-end; padding-right: 20px; }
-        .swipe-bg i { color: white; font-size: 1.5rem; }
-        .swipe-bg span { color: white; font-weight: 800; font-size: 0.85rem; margin-left: 6px; }
-        .swipe-inner { position: relative; transition: transform 0.2s ease; touch-action: pan-y; user-select: none; }
-        .swipe-inner .data-card { margin-bottom: 0; border-radius: var(--radius-md); }
+        /* ── Long-press hold ring ── */
+        .data-card { position: relative; overflow: hidden; }
+        .data-card.holding { box-shadow: 0 0 0 3px var(--primary); }
+        .hold-ring { position: absolute; inset: 0; pointer-events: none; }
+        .hold-ring svg { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 48px; height: 48px; opacity: 0; transition: opacity 0.15s; }
+        .data-card.holding .hold-ring svg { opacity: 1; }
+        .hold-ring circle.track { fill: none; stroke: #e2e8f0; stroke-width: 4; }
+        .hold-ring circle.progress { fill: none; stroke: var(--primary); stroke-width: 4; stroke-linecap: round;
+            stroke-dasharray: 113; stroke-dashoffset: 113; transform-origin: center; transform: rotate(-90deg);
+            transition: stroke-dashoffset linear; }
 
-        /* ── Edit Part Modal ── */
-        .edit-modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.55); z-index: 300; display: flex; align-items: flex-end; opacity: 0; pointer-events: none; transition: opacity 0.25s; }
+        /* ── Part Action Sheet ── */
+        .part-action-overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.45); z-index: 300; display: flex; align-items: flex-end; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+        .part-action-overlay.active { opacity: 1; pointer-events: all; }
+        .part-action-sheet { background: var(--surface); width: 100%; max-width: 600px; margin: 0 auto; border-radius: 24px 24px 0 0; padding: 20px 20px 44px; transform: translateY(100%); transition: transform 0.3s cubic-bezier(.4,0,.2,1); }
+        .part-action-overlay.active .part-action-sheet { transform: translateY(0); }
+        .part-action-btn { display: flex; align-items: center; gap: 14px; width: 100%; padding: 16px 18px; border: none; border-radius: var(--radius-md); font-size: 1rem; font-family: 'Inter', sans-serif; font-weight: 700; cursor: pointer; margin-bottom: 10px; transition: opacity 0.15s; background: #f8fafc; color: var(--dark); }
+        .part-action-btn:active { opacity: 0.75; }
+        .part-action-btn.edit  { background: #eff6ff; color: var(--primary); }
+        .part-action-btn.del   { background: #fef2f2; color: var(--danger); }
+        .part-action-btn i { font-size: 1.3rem; }
+
+        /* ── Edit Part Form Sheet ── */
+        .edit-modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.55); z-index: 400; display: flex; align-items: flex-end; opacity: 0; pointer-events: none; transition: opacity 0.25s; }
         .edit-modal-overlay.active { opacity: 1; pointer-events: all; }
         .edit-modal-sheet { background: var(--surface); width: 100%; max-width: 600px; margin: 0 auto; border-radius: 24px 24px 0 0; padding: 24px 20px 40px; transform: translateY(100%); transition: transform 0.3s cubic-bezier(.4,0,.2,1); }
         .edit-modal-overlay.active .edit-modal-sheet { transform: translateY(0); }
@@ -220,7 +232,24 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
 <body onload="init()">
 
 <div id="app">
-    <!-- Edit Part Modal -->
+    <!-- Part Action Sheet (hold menu) -->
+    <div class="part-action-overlay" id="partActionSheet" onclick="closePartAction(event)">
+        <div class="part-action-sheet">
+            <div style="width:40px; height:4px; background:#e2e8f0; border-radius:2px; margin:0 auto 16px;"></div>
+            <div id="partActionTitle" style="font-family:'Outfit'; font-weight:900; font-size:1rem; color:var(--dark); margin-bottom:16px; padding:0 4px;"></div>
+            <button class="part-action-btn edit" onclick="openEditFromAction()">
+                <i class="ph-fill ph-pencil-simple"></i> Edit Part
+            </button>
+            <button class="part-action-btn del" onclick="deleteFromAction()">
+                <i class="ph-fill ph-trash"></i> Delete Part
+            </button>
+            <button class="part-action-btn" onclick="closePartAction()" style="margin-bottom:0; color:var(--text-muted);">
+                <i class="ph-fill ph-x"></i> Cancel
+            </button>
+        </div>
+    </div>
+
+    <!-- Edit Part Form -->
     <div class="edit-modal-overlay" id="editPartModal" onclick="closeEditModal(event)">
         <div class="edit-modal-sheet">
             <div style="width:40px; height:4px; background:#e2e8f0; border-radius:2px; margin:0 auto 20px;"></div>
@@ -244,6 +273,38 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
             <div style="display:flex; gap:10px;">
                 <button class="btn btn-secondary" style="flex:1;" onclick="closeEditModal()">Cancel</button>
                 <button class="btn btn-primary" style="flex:2;" onclick="savePartEdit()"><i class="ph-bold ph-floppy-disk"></i> Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pan Location Edit Form -->
+    <div class="edit-modal-overlay" id="editPanModal" onclick="closePanEditModal(event)">
+        <div class="edit-modal-sheet">
+            <div style="width:40px; height:4px; background:#e2e8f0; border-radius:2px; margin:0 auto 20px;"></div>
+            <h3 style="font-family:'Outfit'; font-weight:900; margin:0 0 20px; color:var(--dark);"><i class="ph-fill ph-map-pin" style="color:var(--success);"></i> Edit Pan Location</h3>
+            <div style="margin-bottom:14px;">
+                <label class="edit-field-label">Unit S/N</label>
+                <input id="pan-sn" class="edit-field-input" type="text" placeholder="Unit Serial Number">
+            </div>
+            <div style="margin-bottom:14px;">
+                <label class="edit-field-label">Hospital</label>
+                <input id="pan-hospital" class="edit-field-input" type="text" placeholder="Hospital name">
+            </div>
+            <div style="margin-bottom:14px;">
+                <label class="edit-field-label">Location</label>
+                <input id="pan-location" class="edit-field-input" type="text" placeholder="Ward / Department">
+            </div>
+            <div style="margin-bottom:14px;">
+                <label class="edit-field-label">Install Date</label>
+                <input id="pan-install" class="edit-field-input" type="text" placeholder="e.g. 01/15/2020">
+            </div>
+            <div style="margin-bottom:24px;">
+                <label class="edit-field-label">Next Service</label>
+                <input id="pan-service" class="edit-field-input" type="text" placeholder="e.g. 07/15/2025">
+            </div>
+            <div style="display:flex; gap:10px;">
+                <button class="btn btn-secondary" style="flex:1;" onclick="closePanEditModal()">Cancel</button>
+                <button class="btn btn-primary" style="flex:2;" onclick="savePanEdit()"><i class="ph-bold ph-floppy-disk"></i> Save Changes</button>
             </div>
         </div>
     </div>
@@ -382,7 +443,7 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         <div class="view-header">
             <button class="back-btn" onclick="closeSecondary()"><i class="ph-bold ph-arrow-left"></i> Home</button>
             <h2 id="secTitle" class="view-title">Results</h2>
-            <div style="width: 80px;"></div>
+            <button id="addNewBtn" style="display:none; background:var(--primary); color:white; border:none; border-radius:30px; padding:8px 16px; font-weight:800; font-size:0.85rem; cursor:pointer; font-family:'Inter',sans-serif; display:none; align-items:center; gap:5px;" onclick="handleAddNew()"><i class="ph-bold ph-plus"></i> Add</button>
         </div>
         <div id="localSearchWrapper" class="local-search-container" style="display:none;">
             <i class="ph ph-magnifying-glass local-search-icon"></i>
@@ -449,6 +510,28 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
     try { partsEdits = JSON.parse(localStorage.getItem('mins_parts_edits')) || {}; } catch(e) {}
     try { partsDeleted = new Set(JSON.parse(localStorage.getItem('mins_parts_deleted')) || []); } catch(e) {}
 
+    // ── Pan Location edit/delete persistence ─────────────────────────
+    let panEdits = {};
+    let panDeleted = new Set();
+    try { panEdits = JSON.parse(localStorage.getItem('mins_pan_edits')) || {}; } catch(e) {}
+    try { panDeleted = new Set(JSON.parse(localStorage.getItem('mins_pan_deleted')) || []); } catch(e) {}    
+
+    function savePanOverrides() {
+        try {
+            localStorage.setItem('mins_pan_edits', JSON.stringify(panEdits));
+            localStorage.setItem('mins_pan_deleted', JSON.stringify([...panDeleted]));
+        } catch(e) { console.warn('Could not save pan overrides', e); }
+    }
+
+    function applyPanOverrides() {
+        db.pan.forEach((p, i) => {
+            if (panEdits[p['Unit S/N']]) Object.assign(db.pan[i], panEdits[p['Unit S/N']]);
+        });
+        if (panDeleted.size > 0) {
+            window.db.pan = db.pan.filter(p => !panDeleted.has(p['Unit S/N']));
+        }
+    }
+
     function applyPartsOverrides() {
         // Apply edits
         db.parts.forEach((p, i) => {
@@ -474,6 +557,7 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         if (!masterDrive['iqoq']) masterDrive['iqoq'] = [];
         if (!masterDrive['manuals']) masterDrive['manuals'] = [];
         applyPartsOverrides();
+        applyPanOverrides();
 
         // Merge custom parts into db.parts (avoid duplicates)
         customParts.forEach(cp => {
@@ -499,6 +583,14 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         activeMode = mode;
         document.body.classList.add('view-active');
         document.getElementById('secTitle').innerText = modeLabels[mode] + (filterValue ? ` (${filterValue})` : '');
+        
+        // Show/hide Add button
+        const addBtn = document.getElementById('addNewBtn');
+        if ((mode === 'parts' || mode === 'pan') && !filterValue) {
+            addBtn.style.display = 'flex';
+        } else {
+            addBtn.style.display = 'none';
+        }
         
         const backBtn = document.querySelector('.back-btn');
         if (filterValue && ['bht', 'gen5', 'bandeli', 'platypus', 'hippopotamus', 'tangent', 'ken'].includes(mode)) {
@@ -589,23 +681,22 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         list.forEach((item, idx) => {
             let t = item['Error Code / Fault Name'] || item.PartID || item.Code || item['Error Code'] || item['Unit S/N'] || 'Unknown';
             let s = item['Alarm Description / Details'] || item.Description || item.Error || item['Display / Message'] || item.Location || item['Alarm Description'] || '';
-            const isPart = (mode === 'parts' || mode === 'out');
+            const isPart = (mode === 'parts' || mode === 'out' || mode === 'pan');
             if (isPart) {
-                const rowId = 'swipe-row-' + idx;
-                const div = document.createElement('div');
-                div.className = 'swipe-row';
-                div.id = rowId;
-                div.innerHTML = `
-                    <div class="swipe-bg swipe-bg-edit"><i class="ph-bold ph-pencil-simple"></i><span>Edit</span></div>
-                    <div class="swipe-bg swipe-bg-delete"><i class="ph-bold ph-trash"></i><span>Delete</span></div>
-                    <div class="swipe-inner" id="inner-${rowId}">
-                        <div class="data-card" style="margin-bottom:0;" onclick='showDetails(${JSON.stringify(item).replace(/'/g, "&#39;")}, "${mode}")'>
-                            <div class="data-title">${t}</div>
-                            <div class="data-sub">${s}</div>
-                        </div>
+                const card = document.createElement('div');
+                card.className = 'data-card';
+                card.innerHTML = `
+                    <div class="data-title">${t}</div>
+                    <div class="data-sub">${s}</div>
+                    <div class="hold-ring">
+                        <svg viewBox="0 0 40 40">
+                            <circle class="track" cx="20" cy="20" r="18"/>
+                            <circle class="progress" id="ring-${idx}" cx="20" cy="20" r="18"/>
+                        </svg>
                     </div>`;
-                content.appendChild(div);
-                attachSwipe(div, item, mode);
+                card.addEventListener('click', () => showDetails(item, mode));
+                content.appendChild(card);
+                attachLongPress(card, item);
             } else {
                 content.innerHTML += `<div class="data-card" onclick='showDetails(${JSON.stringify(item).replace(/'/g, "&#39;")}, "${mode}")'><div class="data-title">${t}</div><div class="data-sub">${s}</div></div>`;
             }
@@ -709,43 +800,194 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         }
     }
 
-    // ── Swipe logic ──────────────────────────────────────────────────
+    // ── Long-press (3 sec hold) logic ────────────────────────────────
     let editTarget = null;
+    let actionTarget = null;
+    let actionRowEl  = null;
+    let actionMode   = '';
+    const HOLD_MS = 3000;
 
-    function attachSwipe(rowEl, item, mode) {
-        const inner = rowEl.querySelector('.swipe-inner');
-        let startX = 0, startY = 0, diffX = 0, swiping = false, locked = false;
-        const THRESHOLD = 80;
+    function attachLongPress(cardEl, item) {
+        let holdTimer = null;
+        let moved = false;
+        let startX = 0, startY = 0;
+        const ring = cardEl.querySelector('.progress');
 
-        inner.addEventListener('touchstart', e => {
-            startX = e.touches[0].clientX;
-            startY = e.touches[0].clientY;
-            diffX = 0; swiping = true; locked = false;
-            inner.style.transition = 'none';
+        function startHold(x, y) {
+            moved = false;
+            startX = x; startY = y;
+            cardEl.classList.add('holding');
+            // Animate ring from 113 → 0 over HOLD_MS
+            if (ring) {
+                ring.style.transition = 'none';
+                ring.style.strokeDashoffset = '113';
+                requestAnimationFrame(() => {
+                    ring.style.transition = `stroke-dashoffset ${HOLD_MS}ms linear`;
+                    ring.style.strokeDashoffset = '0';
+                });
+            }
+            holdTimer = setTimeout(() => {
+                cardEl.classList.remove('holding');
+                if (navigator.vibrate) navigator.vibrate(40);
+                openPartAction(item, cardEl);
+            }, HOLD_MS);
+        }
+
+        function cancelHold() {
+            clearTimeout(holdTimer);
+            holdTimer = null;
+            cardEl.classList.remove('holding');
+            if (ring) {
+                ring.style.transition = 'none';
+                ring.style.strokeDashoffset = '113';
+            }
+        }
+
+        // Touch
+        cardEl.addEventListener('touchstart', e => {
+            startHold(e.touches[0].clientX, e.touches[0].clientY);
         }, { passive: true });
-
-        inner.addEventListener('touchmove', e => {
-            if (!swiping || locked) return;
+        cardEl.addEventListener('touchmove', e => {
             const dx = e.touches[0].clientX - startX;
             const dy = e.touches[0].clientY - startY;
-            if (!locked && Math.abs(dy) > Math.abs(dx)) { locked = true; return; }
-            locked = true;
-            diffX = dx;
-            const clamped = Math.max(-120, Math.min(120, diffX));
-            inner.style.transform = `translateX(${clamped}px)`;
+            if (Math.abs(dx) > 10 || Math.abs(dy) > 10) cancelHold();
         }, { passive: true });
+        cardEl.addEventListener('touchend',   cancelHold);
+        cardEl.addEventListener('touchcancel', cancelHold);
 
-        inner.addEventListener('touchend', () => {
-            swiping = false;
-            inner.style.transition = 'transform 0.2s ease';
-            inner.style.transform = 'translateX(0)';
-            if (diffX > THRESHOLD) {
-                openEditModal(item);
-            } else if (diffX < -THRESHOLD) {
-                confirmDeletePart(item, rowEl);
-            }
-            diffX = 0;
+        // Mouse (desktop fallback)
+        cardEl.addEventListener('mousedown', e => startHold(e.clientX, e.clientY));
+        cardEl.addEventListener('mousemove', e => {
+            if (!holdTimer) return;
+            const dx = e.clientX - startX, dy = e.clientY - startY;
+            if (Math.abs(dx) > 10 || Math.abs(dy) > 10) cancelHold();
         });
+        cardEl.addEventListener('mouseup',   cancelHold);
+        cardEl.addEventListener('mouseleave', cancelHold);
+    }
+
+    function openPartAction(item, cardEl) {
+        actionTarget = item;
+        actionRowEl  = cardEl;
+        actionMode   = currentLocalMode;
+        const label = item.PartID
+            ? `${item.PartID} — ${item.Description}`
+            : `${item['Unit S/N']} — ${item.Hospital}`;
+        document.getElementById('partActionTitle').textContent = label;
+        document.getElementById('partActionSheet').classList.add('active');
+    }
+
+    function closePartAction(e) {
+        if (!e || e.target.id === 'partActionSheet') {
+            document.getElementById('partActionSheet').classList.remove('active');
+        }
+    }
+
+    function openEditFromAction() {
+        document.getElementById('partActionSheet').classList.remove('active');
+        if (!actionTarget) return;
+        if (actionMode === 'pan') {
+            openPanEditModal(actionTarget);
+        } else {
+            openEditModal(actionTarget);
+        }
+    }
+
+    function deleteFromAction() {
+        document.getElementById('partActionSheet').classList.remove('active');
+        if (!actionTarget || !actionRowEl) return;
+        if (actionMode === 'pan') {
+            confirmDeletePan(actionTarget, actionRowEl);
+        } else {
+            confirmDeletePart(actionTarget, actionRowEl);
+        }
+    }
+
+    // ── Pan Location edit/delete handlers ─────────────────────────
+    let panEditTarget = null;
+
+    function openPanEditModal(item) {
+        panEditTarget = item;
+        document.getElementById('pan-sn').value       = item['Unit S/N'] || '';
+        document.getElementById('pan-hospital').value = item.Hospital || '';
+        document.getElementById('pan-location').value = item.Location || '';
+        document.getElementById('pan-install').value  = item['Install Date'] || '';
+        document.getElementById('pan-service').value  = item['Next Service'] || '';
+        document.getElementById('editPanModal').classList.add('active');
+    }
+
+    function closePanEditModal(e) {
+        if (!e || e.target.id === 'editPanModal') {
+            document.getElementById('editPanModal').classList.remove('active');
+            panEditTarget = null;
+        }
+    }
+
+    function savePanEdit() {
+        if (!panEditTarget) {
+            // ── NEW PAN LOCATION ──
+            const newSN = document.getElementById('pan-sn').value.trim();
+            if (!newSN) { alert('Unit S/N is required.'); return; }
+            const newEntry = {
+                'Unit S/N':    newSN,
+                Hospital:      document.getElementById('pan-hospital').value.trim(),
+                Location:      document.getElementById('pan-location').value.trim(),
+                'Install Date': document.getElementById('pan-install').value.trim(),
+                'Next Service': document.getElementById('pan-service').value.trim()
+            };
+            db.pan.push(newEntry);
+            panEdits[newSN] = newEntry;
+            savePanOverrides();
+            document.getElementById('editPanModal').classList.remove('active');
+            document.getElementById('editPanModal').querySelector('h3').innerHTML =
+                '<i class="ph-fill ph-map-pin" style="color:var(--success);"></i> Edit Pan Location';
+            currentLocalList = db.pan;
+            renderLocalList(db.pan, 'pan', false);
+            document.getElementById('b-pan').innerText = db.pan.length;
+            return;
+        }
+        // ── EDIT EXISTING ──
+        const oldSN = panEditTarget['Unit S/N'];
+        const newSN  = document.getElementById('pan-sn').value.trim();
+        const newHosp = document.getElementById('pan-hospital').value.trim();
+        const newLoc  = document.getElementById('pan-location').value.trim();
+        const newInst = document.getElementById('pan-install').value.trim();
+        const newServ = document.getElementById('pan-service').value.trim();
+
+        const idx = db.pan.findIndex(p => p['Unit S/N'] === oldSN);
+        if (idx !== -1) {
+            db.pan[idx]['Unit S/N']    = newSN;
+            db.pan[idx].Hospital       = newHosp;
+            db.pan[idx].Location       = newLoc;
+            db.pan[idx]['Install Date'] = newInst;
+            db.pan[idx]['Next Service'] = newServ;
+            panEdits[newSN] = { 'Unit S/N': newSN, Hospital: newHosp, Location: newLoc, 'Install Date': newInst, 'Next Service': newServ };
+            savePanOverrides();
+        }
+
+        document.getElementById('editPanModal').classList.remove('active');
+        panEditTarget = null;
+
+        const list = db.pan;
+        currentLocalList = list;
+        renderLocalList(list, 'pan', false);
+        document.getElementById('b-pan').innerText = db.pan.length;
+    }
+
+    function confirmDeletePan(item, cardEl) {
+        if (!confirm(`Delete "${item['Unit S/N']} at ${item.Hospital}"?\nThis cannot be undone.`)) return;
+        const sn = item['Unit S/N'];
+        panDeleted.add(sn);
+        const idx = db.pan.findIndex(p => p['Unit S/N'] === sn);
+        if (idx !== -1) db.pan.splice(idx, 1);
+        savePanOverrides();
+
+        cardEl.style.transition = 'max-height 0.3s ease, opacity 0.3s ease';
+        cardEl.style.maxHeight = cardEl.offsetHeight + 'px';
+        requestAnimationFrame(() => { cardEl.style.maxHeight = '0'; cardEl.style.opacity = '0'; });
+        setTimeout(() => cardEl.remove(), 320);
+
+        document.getElementById('b-pan').innerText = db.pan.length;
     }
 
     function openEditModal(item) {
@@ -765,7 +1007,31 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
     }
 
     function savePartEdit() {
-        if (!editTarget) return;
+        if (!editTarget) {
+            // ── NEW PART ──
+            const newPartID = document.getElementById('edit-partid').value.trim();
+            if (!newPartID) { alert('Part ID is required.'); return; }
+            const newPart = {
+                PartID: newPartID,
+                Description: document.getElementById('edit-desc').value.trim(),
+                Location:    document.getElementById('edit-loc').value.trim(),
+                Stock:       parseInt(document.getElementById('edit-stock').value) || 0
+            };
+            db.parts.push(newPart);
+            customParts.push(newPart);
+            saveCustomParts();
+            document.getElementById('editPartModal').classList.remove('active');
+            // Restore modal title
+            document.getElementById('editPartModal').querySelector('h3').innerHTML =
+                '<i class="ph-fill ph-pencil-simple" style="color:var(--primary);"></i> Edit Part';
+            const list = db.parts;
+            currentLocalList = list;
+            renderLocalList(list, 'parts', false);
+            document.getElementById('b-parts').innerText = db.parts.length;
+            document.getElementById('b-out').innerText = db.parts.filter(p => !p.Stock || parseInt(p.Stock) === 0).length;
+            return;
+        }
+        // ── EDIT EXISTING ──
         const newPartID = document.getElementById('edit-partid').value.trim();
         const newDesc   = document.getElementById('edit-desc').value.trim();
         const newLoc    = document.getElementById('edit-loc').value.trim();
@@ -784,12 +1050,9 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         document.getElementById('editPartModal').classList.remove('active');
         editTarget = null;
 
-        // Refresh list
         const list = (currentLocalMode === 'out') ? db.parts.filter(p => !p.Stock || parseInt(p.Stock) === 0) : db[currentLocalMode];
         currentLocalList = list;
         renderLocalList(list, currentLocalMode, false);
-
-        // Refresh dashboard badges
         document.getElementById('b-parts').innerText = db.parts.length;
         document.getElementById('b-out').innerText = db.parts.filter(p => !p.Stock || parseInt(p.Stock) === 0).length;
     }
@@ -815,11 +1078,44 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         document.body.classList.remove('view-active');
         document.getElementById('mainSearch').value = '';
         document.getElementById('localSearchWrapper').style.display = 'none';
+        document.getElementById('addNewBtn').style.display = 'none';
         setTimeout(() => {
             const backBtn = document.querySelector('.back-btn');
             backBtn.innerHTML = `<i class="ph-bold ph-arrow-left"></i> Home`;
             backBtn.onclick = closeSecondary;
         }, 300);
+    }
+
+    // ── Add New handlers ────────────────────────────────────────────
+    function handleAddNew() {
+        if (currentLocalMode === 'pan') {
+            addNewPan();
+        } else {
+            addNewPart();
+        }
+    }
+
+    function addNewPart() {
+        editTarget = null; // null = new mode
+        document.getElementById('edit-partid').value = '';
+        document.getElementById('edit-desc').value   = '';
+        document.getElementById('edit-loc').value    = '';
+        document.getElementById('edit-stock').value  = '';
+        document.getElementById('editPartModal').querySelector('h3').innerHTML =
+            '<i class="ph-fill ph-plus-circle" style="color:var(--success);"></i> Add New Part';
+        document.getElementById('editPartModal').classList.add('active');
+    }
+
+    function addNewPan() {
+        panEditTarget = null; // null = new mode
+        document.getElementById('pan-sn').value       = '';
+        document.getElementById('pan-hospital').value = '';
+        document.getElementById('pan-location').value = '';
+        document.getElementById('pan-install').value  = '';
+        document.getElementById('pan-service').value  = '';
+        document.getElementById('editPanModal').querySelector('h3').innerHTML =
+            '<i class="ph-fill ph-plus-circle" style="color:var(--success);"></i> Add New Location';
+        document.getElementById('editPanModal').classList.add('active');
     }
 
     // ── Photo Logic ───────────────────────────────────────────────
