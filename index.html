@@ -422,9 +422,13 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
                     <div class="card-icon-wrap" style="color:var(--warning)"><i class="ph-fill ph-eyedropper-sample"></i></div>
                     <h3>Dose Check</h3><p>Volume & Ratio</p>
                 </div>
-                <div class="menu-card card-primary" onclick="openCalculator('ratio')" style="grid-column: span 2;">
+                <div class="menu-card card-primary" onclick="openCalculator('ratio')">
                     <div class="card-icon-wrap" style="color:var(--primary)"><i class="ph-fill ph-arrows-left-right"></i></div>
                     <h3>Fluid Ratio</h3><p>Convert Litres</p>
+                </div>
+                <div class="menu-card" onclick="openPasswordGen()" style="background:linear-gradient(145deg,#fff,#f0fdf4); border:1px solid #86efac;">
+                    <div class="card-icon-wrap" style="color:#16a34a"><i class="ph-fill ph-key"></i></div>
+                    <h3>Password Gen</h3><p>Codes &amp; Web Links</p>
                 </div>
             </div>
 
@@ -1690,7 +1694,219 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         }
     }
 
+
+    // ── PASSWORD GENERATOR ──────────────────────────────────────────
+    let webLinks = [];
+    try { webLinks = JSON.parse(localStorage.getItem('mins_web_links')) || []; } catch(e) {}
+    function saveWebLinks() { localStorage.setItem('mins_web_links', JSON.stringify(webLinks)); }
+
+    function openPasswordGen() {
+        document.body.classList.add('view-active');
+        document.getElementById('secTitle').innerText = 'Password Gen';
+        document.getElementById('localSearchWrapper').style.display = 'none';
+        document.getElementById('addNewBtn').style.display = 'none';
+        const backBtn = document.querySelector('.back-btn');
+        backBtn.innerHTML = `<i class="ph-bold ph-arrow-left"></i> Home`;
+        backBtn.onclick = closeSecondary;
+
+        const c = document.getElementById('secContent');
+        c.innerHTML = `
+        <div style="display:flex; border-radius:14px; background:#e2e8f0; padding:5px; margin-bottom:20px; margin-top:4px; gap:4px;">
+            <button id="pgTab1" onclick="pgSwitch(1)" style="flex:1; border:none; border-radius:10px; padding:12px 8px; font-weight:900; font-size:0.85rem; font-family:'Inter',sans-serif; cursor:pointer; background:white; color:var(--dark); box-shadow:0 2px 6px rgba(0,0,0,0.08); transition:0.2s;"><i class="ph-fill ph-lock-key"></i> Tangent L8</button>
+            <button id="pgTab2" onclick="pgSwitch(2)" style="flex:1; border:none; border-radius:10px; padding:12px 8px; font-weight:900; font-size:0.85rem; font-family:'Inter',sans-serif; cursor:pointer; background:transparent; color:var(--text-muted); transition:0.2s;"><i class="ph-fill ph-globe"></i> Web Links</button>
+        </div>
+        <div id="pg-panel-1"></div>
+        <div id="pg-panel-2" style="display:none;"></div>`;
+
+        pgSwitch(1);
+        document.getElementById('secondaryView').scrollTop = 0;
+    }
+
+    function pgSwitch(tab) {
+        const t1 = document.getElementById('pgTab1');
+        const t2 = document.getElementById('pgTab2');
+        const p1 = document.getElementById('pg-panel-1');
+        const p2 = document.getElementById('pg-panel-2');
+        if (!t1) return;
+        if (tab === 1) {
+            t1.style.background='white'; t1.style.color='var(--dark)'; t1.style.boxShadow='0 2px 6px rgba(0,0,0,0.08)';
+            t2.style.background='transparent'; t2.style.color='var(--text-muted)'; t2.style.boxShadow='none';
+            p1.style.display='block'; p2.style.display='none';
+            renderTangentGen();
+        } else {
+            t2.style.background='white'; t2.style.color='var(--dark)'; t2.style.boxShadow='0 2px 6px rgba(0,0,0,0.08)';
+            t1.style.background='transparent'; t1.style.color='var(--text-muted)'; t1.style.boxShadow='none';
+            p2.style.display='block'; p1.style.display='none';
+            renderWebLinks();
+        }
+    }
+
+    // ── Tangent Level 8 Generator ──────────────────────────────────
+    function renderTangentGen() {
+        const p = document.getElementById('pg-panel-1');
+        const now = new Date();
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const dd = String(now.getDate()).padStart(2, '0');
+        const mmdd = mm + dd;
+        const digits = mmdd.split('');
+        const codes  = digits.map(d => (30 + parseInt(d)).toString());
+        const password = codes.join('');
+
+        const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+        const dayNames   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+        const dateStr    = `${dayNames[now.getDay()]}, ${monthNames[now.getMonth()]} ${now.getDate()}, ${now.getFullYear()}`;
+
+        p.innerHTML = `
+        <div style="background:linear-gradient(135deg,#1e293b,#0f172a); border-radius:20px; padding:28px 20px; text-align:center; margin-bottom:20px; box-shadow:0 12px 30px rgba(0,0,0,0.25); position:relative; overflow:hidden;">
+            <div style="position:absolute; top:-30px; right:-30px; width:120px; height:120px; background:rgba(59,130,246,0.15); border-radius:50%; filter:blur(20px);"></div>
+            <div style="font-size:0.75rem; font-weight:800; color:#64748b; text-transform:uppercase; letter-spacing:1.5px; margin-bottom:6px;">Tangent Level 8 · Today</div>
+            <div style="font-size:0.9rem; font-weight:600; color:#94a3b8; margin-bottom:20px;">${dateStr}</div>
+            <div id="pg-password" style="font-size:2.8rem; font-weight:900; font-family:'Outfit',sans-serif; color:white; letter-spacing:4px; line-height:1; margin-bottom:8px;">${password}</div>
+            <div style="font-size:0.8rem; color:#64748b; margin-bottom:22px;">Date code: ${mm}/${dd}</div>
+            <button onclick="pgCopyPassword('${password}')" style="background:var(--primary); color:white; border:none; border-radius:30px; padding:12px 28px; font-weight:800; font-size:0.9rem; cursor:pointer; font-family:'Inter',sans-serif; display:inline-flex; align-items:center; gap:8px; box-shadow:0 4px 15px rgba(59,130,246,0.4);" id="pgCopyBtn">
+                <i class="ph-bold ph-copy"></i> Copy Password
+            </button>
+        </div>
+
+        <div style="background:var(--surface); border-radius:16px; padding:20px; border:1px solid #e2e8f0; margin-bottom:20px; box-shadow:0 2px 8px rgba(0,0,0,0.04);">
+            <div style="font-size:0.75rem; font-weight:800; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:16px; display:flex; align-items:center; gap:8px;"><i class="ph-fill ph-function"></i> Atherton ASCII Breakdown</div>
+            <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:16px;">
+                ${digits.map((d, i) => `
+                <div style="text-align:center; background:#f8fafc; border-radius:12px; padding:12px 8px; border:1px solid #e2e8f0;">
+                    <div style="font-size:1.4rem; font-weight:900; font-family:'Outfit'; color:var(--primary);">${d}</div>
+                    <div style="font-size:0.7rem; color:#94a3b8; margin:4px 0; font-weight:700;">30 + ${d}</div>
+                    <div style="font-size:1.1rem; font-weight:900; color:#16a34a; font-family:'Outfit';">${codes[i]}</div>
+                </div>`).join('')}
+            </div>
+            <div style="background:#f0fdf4; border:1px solid #86efac; border-radius:10px; padding:12px 16px; font-size:0.9rem; color:#166534; font-weight:700;">
+                <i class="ph-fill ph-info"></i> Formula: each digit <strong>D</strong> → <strong>30 + D</strong> (Atherton ASCII chart)
+            </div>
+        </div>
+
+        <div style="background:var(--surface); border-radius:16px; padding:20px; border:1px solid #e2e8f0; box-shadow:0 2px 8px rgba(0,0,0,0.04);">
+            <div style="font-size:0.75rem; font-weight:800; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:14px;"><i class="ph-fill ph-calendar-blank"></i> Generate for any date</div>
+            <div style="display:flex; gap:10px; align-items:flex-end;">
+                <div style="flex:1;">
+                    <label style="font-size:0.75rem; font-weight:700; color:var(--text-muted); display:block; margin-bottom:6px;">Month</label>
+                    <input type="number" id="pg-mm" min="1" max="12" value="${parseInt(mm)}" class="edit-field-input" oninput="pgCustomCalc()">
+                </div>
+                <div style="flex:1;">
+                    <label style="font-size:0.75rem; font-weight:700; color:var(--text-muted); display:block; margin-bottom:6px;">Day</label>
+                    <input type="number" id="pg-dd" min="1" max="31" value="${parseInt(dd)}" class="edit-field-input" oninput="pgCustomCalc()">
+                </div>
+                <div style="flex:1;">
+                    <div style="font-size:0.72rem; font-weight:700; color:var(--text-muted); margin-bottom:6px;">Result</div>
+                    <div id="pg-custom-result" style="background:#1e293b; color:white; border-radius:10px; padding:12px; font-family:'Outfit'; font-weight:900; font-size:1.1rem; text-align:center; letter-spacing:2px;">${password}</div>
+                </div>
+            </div>
+        </div>`;
+    }
+
+    function pgCustomCalc() {
+        const mm2 = String(parseInt(document.getElementById('pg-mm').value) || 1).padStart(2, '0');
+        const dd2 = String(parseInt(document.getElementById('pg-dd').value) || 1).padStart(2, '0');
+        const result = (mm2 + dd2).split('').map(d => (30 + parseInt(d)).toString()).join('');
+        document.getElementById('pg-custom-result').textContent = result;
+    }
+
+    function pgCopyPassword(pw) {
+        navigator.clipboard.writeText(pw).then(() => {
+            const btn = document.getElementById('pgCopyBtn');
+            if (btn) { btn.innerHTML = '<i class="ph-bold ph-check"></i> Copied!'; btn.style.background='#16a34a'; setTimeout(() => { btn.innerHTML = '<i class="ph-bold ph-copy"></i> Copy Password'; btn.style.background='var(--primary)'; }, 2000); }
+        }).catch(() => {
+            const el = document.createElement('textarea');
+            el.value = pw; document.body.appendChild(el); el.select(); document.execCommand('copy'); document.body.removeChild(el);
+            const btn = document.getElementById('pgCopyBtn');
+            if (btn) { btn.innerHTML = '<i class="ph-bold ph-check"></i> Copied!'; setTimeout(() => { btn.innerHTML = '<i class="ph-bold ph-copy"></i> Copy Password'; }, 2000); }
+        });
+    }
+
+    // ── Web Links Vault ────────────────────────────────────────────
+    function renderWebLinks() {
+        const p = document.getElementById('pg-panel-2');
+        let html = `
+        <div style="background:var(--surface); border-radius:16px; padding:20px; border:1px solid #e2e8f0; margin-bottom:20px; box-shadow:0 2px 8px rgba(0,0,0,0.04);">
+            <div style="font-size:0.75rem; font-weight:800; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:14px;"><i class="ph-fill ph-plus-circle" style="color:var(--primary);"></i> Add New Web Link</div>
+            <div style="margin-bottom:10px;"><label class="edit-field-label">Site Name</label><input id="wl-name"  class="edit-field-input" type="text" placeholder="e.g. Atherton Service Portal"></div>
+            <div style="margin-bottom:10px;"><label class="edit-field-label">URL</label><input id="wl-url" class="edit-field-input" type="url" placeholder="https://..."></div>
+            <div style="margin-bottom:10px;"><label class="edit-field-label">Username / Email</label><input id="wl-user" class="edit-field-input" type="text" placeholder="username or email"></div>
+            <div style="margin-bottom:16px;"><label class="edit-field-label">Password</label><input id="wl-pass" class="edit-field-input" type="password" placeholder="saved password"></div>
+            <button onclick="wlAdd()" style="width:100%; background:var(--primary); color:white; border:none; border-radius:12px; padding:14px; font-weight:800; font-size:0.95rem; cursor:pointer; font-family:'Inter',sans-serif; display:flex; align-items:center; justify-content:center; gap:8px;"><i class="ph-bold ph-floppy-disk"></i> Save Link</button>
+        </div>`;
+
+        if (webLinks.length === 0) {
+            html += `<div class="empty-state"><i class="ph-fill ph-globe empty-icon"></i><h3>No web links saved</h3><p style="font-size:0.9rem;">Add a site above to store its login details.</p></div>`;
+        } else {
+            webLinks.forEach((lnk, i) => {
+                html += `
+                <div style="background:var(--surface); border-radius:14px; border:1px solid #e2e8f0; padding:18px; margin-bottom:12px; box-shadow:0 2px 6px rgba(0,0,0,0.04);">
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+                        <div style="font-weight:800; font-size:1rem; color:var(--dark); font-family:'Outfit';">${lnk.name}</div>
+                        <button onclick="wlDelete(${i})" style="background:#fef2f2; color:#ef4444; border:none; border-radius:8px; padding:6px 10px; font-size:0.8rem; font-weight:700; cursor:pointer;"><i class="ph-bold ph-trash"></i></button>
+                    </div>
+                    <div style="font-size:0.8rem; color:#64748b; margin-bottom:10px; word-break:break-all;">${lnk.url}</div>
+                    <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:12px;">
+                        <div style="display:flex; justify-content:space-between; background:#f8fafc; border-radius:8px; padding:10px 12px; align-items:center;">
+                            <span style="font-size:0.75rem; font-weight:700; color:#94a3b8;">USERNAME</span>
+                            <span style="font-weight:700; color:var(--dark); font-size:0.9rem;">${lnk.user}</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; background:#f8fafc; border-radius:8px; padding:10px 12px; align-items:center; gap:8px;">
+                            <span style="font-size:0.75rem; font-weight:700; color:#94a3b8;">PASSWORD</span>
+                            <span id="wl-pw-${i}" style="font-weight:700; color:var(--dark); font-size:0.9rem; font-family:'Courier New',monospace;">••••••••</span>
+                            <button onclick="wlToggle(${i})" id="wl-eye-${i}" style="background:none; border:none; color:#64748b; cursor:pointer; font-size:1.1rem; padding:0;"><i class="ph-bold ph-eye"></i></button>
+                            <button onclick="wlCopyPw(${i})" style="background:none; border:none; color:var(--primary); cursor:pointer; font-size:1.1rem; padding:0;"><i class="ph-bold ph-copy"></i></button>
+                        </div>
+                    </div>
+                    <button onclick="wlOpen('${lnk.url.replace(/'/g,"&#39;")}')" style="width:100%; background:linear-gradient(135deg,var(--primary),#2563eb); color:white; border:none; border-radius:10px; padding:12px; font-weight:800; font-size:0.9rem; cursor:pointer; font-family:'Inter',sans-serif; display:flex; align-items:center; justify-content:center; gap:8px;"><i class="ph-bold ph-arrow-square-out"></i> Open Website</button>
+                </div>`;
+            });
+        }
+        p.innerHTML = html;
+    }
+
+    function wlAdd() {
+        const name = document.getElementById('wl-name').value.trim();
+        const url  = document.getElementById('wl-url').value.trim();
+        const user = document.getElementById('wl-user').value.trim();
+        const pass = document.getElementById('wl-pass').value.trim();
+        if (!name || !url) { alert('Site Name and URL are required.'); return; }
+        let fullUrl = url;
+        if (!fullUrl.startsWith('http')) fullUrl = 'https://' + fullUrl;
+        webLinks.push({ name, url: fullUrl, user, pass });
+        saveWebLinks();
+        renderWebLinks();
+    }
+
+    function wlDelete(i) {
+        if (!confirm(`Delete "${webLinks[i].name}"?`)) return;
+        webLinks.splice(i, 1);
+        saveWebLinks();
+        renderWebLinks();
+    }
+
+    const _wlVisible = {};
+    function wlToggle(i) {
+        _wlVisible[i] = !_wlVisible[i];
+        const el  = document.getElementById(`wl-pw-${i}`);
+        const eye = document.getElementById(`wl-eye-${i}`);
+        if (el) el.textContent = _wlVisible[i] ? webLinks[i].pass : '••••••••';
+        if (eye) eye.innerHTML = _wlVisible[i] ? '<i class="ph-bold ph-eye-slash"></i>' : '<i class="ph-bold ph-eye"></i>';
+    }
+
+    function wlCopyPw(i) {
+        navigator.clipboard.writeText(webLinks[i].pass).catch(() => {
+            const el = document.createElement('textarea');
+            el.value = webLinks[i].pass; document.body.appendChild(el); el.select(); document.execCommand('copy'); document.body.removeChild(el);
+        });
+        const btn = event.currentTarget;
+        btn.innerHTML = '<i class="ph-bold ph-check"></i>';
+        setTimeout(() => { btn.innerHTML = '<i class="ph-bold ph-copy"></i>'; }, 1500);
+    }
+
+    function wlOpen(url) { window.open(url, '_blank'); }
+
     // -- SPARE PART PDFS
+
     let sparePartPdfs = [];
     try {
         sparePartPdfs = JSON.parse(localStorage.getItem('mins_spare_parts')) || [];
