@@ -223,9 +223,14 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         .expiry-warn { background: var(--warning-light); color: var(--warning); }
         .expiry-danger { background: var(--danger-light); color: var(--danger); }
 
-        .custom-slider { -webkit-appearance: none; width: 100%; height: 8px; background: #e2e8f0; border-radius: 5px; outline: none; margin-top: 10px; }
+        .custom-slider { -webkit-appearance: none; appearance: none; width: 100%; height: 8px; background: #e2e8f0; border-radius: 5px; outline: none; margin-top: 10px; }
         .custom-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 28px; height: 28px; border-radius: 50%; background: var(--success); cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.15); border: 4px solid white; transition: 0.2s; }
         .custom-slider::-webkit-slider-thumb:active { transform: scale(1.15); background: var(--dark); }
+
+        /* In-App Browser */
+        #inAppBrowser { pointer-events: none; }
+        #inAppBrowser.active { transform: translateY(0) !important; opacity: 1 !important; pointer-events: all; }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
     </style>
 </head>
@@ -2001,7 +2006,7 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
                             <button onclick="wlCopyPw(${i})" style="background:none; border:none; color:var(--primary); cursor:pointer; font-size:1.1rem; padding:0;"><i class="ph-bold ph-copy"></i></button>
                         </div>
                     </div>
-                    <button onclick="wlOpen('${lnk.url.replace(/'/g,"&#39;")}')" style="width:100%; background:linear-gradient(135deg,var(--primary),#2563eb); color:white; border:none; border-radius:10px; padding:12px; font-weight:800; font-size:0.9rem; cursor:pointer; font-family:'Inter',sans-serif; display:flex; align-items:center; justify-content:center; gap:8px;"><i class="ph-bold ph-arrow-square-out"></i> Open Website</button>
+                    <button onclick="wlOpen('${lnk.url.replace(/'/g,"&apos;")}', '${lnk.name.replace(/'/g,"&apos;")}')" style="width:100%; background:linear-gradient(135deg,var(--primary),#2563eb); color:white; border:none; border-radius:10px; padding:12px; font-weight:800; font-size:0.9rem; cursor:pointer; font-family:'Inter',sans-serif; display:flex; align-items:center; justify-content:center; gap:8px;"><i class="ph-bold ph-globe"></i> Open Website</button>
                 </div>`;
             });
         }
@@ -2047,7 +2052,159 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         setTimeout(() => { btn.innerHTML = '<i class="ph-bold ph-copy"></i>'; }, 1500);
     }
 
-    function wlOpen(url) { window.open(url, '_blank'); }
+    let _iabCurrentLink = { url: '', user: '', pass: '' };
+    let _iabPassVisible = false;
+
+    function wlOpen(url, name) {
+        // Find the saved link to get credentials
+        const lnk = webLinks.find(l => l.url === url) || { url, name: name||'', user: '', pass: '' };
+        _iabCurrentLink = lnk;
+        _iabPassVisible = false;
+
+        const overlay  = document.getElementById('inAppBrowser');
+        const iframe   = document.getElementById('inAppFrame');
+        const loader   = document.getElementById('inAppLoader');
+        const errDiv   = document.getElementById('inAppErr');
+        const credsBar = document.getElementById('inAppCredsBar');
+
+        // Populate title + URL bar
+        document.getElementById('inAppTitle').textContent = lnk.name || name || 'Website';
+        document.getElementById('inAppUrl').textContent   = url;
+
+        // Populate credentials on error screen
+        document.getElementById('errUser').textContent = lnk.user || '—';
+        document.getElementById('errPass').textContent = '••••••••';
+        document.getElementById('iabEyeBtn').innerHTML = '<i class="ph-bold ph-eye"></i>';
+
+        // Populate credentials bar
+        document.getElementById('barUser').textContent = lnk.user || '';
+
+        // Reset state
+        errDiv.style.display   = 'none';
+        credsBar.style.display = 'none';
+        loader.style.display   = 'flex';
+        iframe.style.display   = 'block';
+        iframe.src = 'about:blank';
+
+        overlay.classList.add('active');
+
+        // Small delay then load the URL so the slide animation completes first
+        setTimeout(() => {
+            iframe.src = url;
+
+            // Use a 3-second timeout to detect blocked frames.
+            // Blocked frames either: never fire onload, fire with empty content,
+            // or fire but cross-origin access is denied — timeout catches all cases.
+            let loadTimer = setTimeout(() => {
+                // If still loading after 3s, likely blocked
+                loader.style.display = 'none';
+                errDiv.style.display = 'flex';
+                credsBar.style.display = 'none';
+            }, 3000);
+
+            iframe.onload = () => {
+                clearTimeout(loadTimer);
+                loader.style.display = 'none';
+
+                // Try accessing contentDocument — throws on cross-origin blocked pages
+                let blocked = false;
+                try {
+                    const doc = iframe.contentDocument || iframe.contentWindow.document;
+                    // Successfully accessed = same-origin or allowed; show creds bar
+                    if (!doc || !doc.body || doc.body.innerHTML.trim() === '') {
+                        blocked = true; // empty body = blocked
+                    }
+                } catch(e) {
+                    blocked = true; // security error = cross-origin blocked
+                }
+
+                if (blocked) {
+                    errDiv.style.display   = 'flex';
+                    credsBar.style.display = 'none';
+                } else {
+                    errDiv.style.display   = 'none';
+                    // Show creds bar at bottom so user can copy-paste into the page
+                    if (lnk.user || lnk.pass) {
+                        credsBar.style.display = 'block';
+                    }
+                }
+            };
+
+            iframe.onerror = () => {
+                clearTimeout(loadTimer);
+                loader.style.display = 'none';
+                errDiv.style.display = 'flex';
+            };
+        }, 350);
+    }
+
+    function closeInAppBrowser() {
+        document.getElementById('inAppBrowser').classList.remove('active');
+        setTimeout(() => {
+            document.getElementById('inAppFrame').src = 'about:blank';
+            document.getElementById('inAppErr').style.display = 'none';
+            document.getElementById('inAppLoader').style.display = 'flex';
+            document.getElementById('inAppCredsBar').style.display = 'none';
+        }, 400);
+    }
+
+    function refreshInApp() {
+        const iframe = document.getElementById('inAppFrame');
+        const url    = _iabCurrentLink.url;
+        document.getElementById('inAppErr').style.display   = 'none';
+        document.getElementById('inAppLoader').style.display = 'flex';
+        document.getElementById('inAppCredsBar').style.display = 'none';
+        iframe.src = 'about:blank';
+        setTimeout(() => { iframe.src = url; }, 100);
+    }
+
+    function inAppOpenExternal() {
+        window.open(_iabCurrentLink.url, '_blank');
+    }
+
+    function iabCopy(elId) {
+        const txt = document.getElementById(elId).textContent.trim();
+        navigator.clipboard.writeText(txt).catch(() => {
+            const el = document.createElement('textarea');
+            el.value = txt; document.body.appendChild(el); el.select(); document.execCommand('copy'); document.body.removeChild(el);
+        });
+        const btn = event.currentTarget;
+        const orig = btn.innerHTML;
+        btn.innerHTML = '<i class="ph-bold ph-check"></i> Copied!';
+        btn.style.background = '#dcfce7'; btn.style.color = '#16a34a'; btn.style.borderColor = '#86efac';
+        setTimeout(() => { btn.innerHTML = orig; btn.style.background = ''; btn.style.color = ''; btn.style.borderColor = ''; }, 1800);
+    }
+
+    function iabTogglePass() {
+        _iabPassVisible = !_iabPassVisible;
+        document.getElementById('errPass').textContent = _iabPassVisible ? (_iabCurrentLink.pass || '') : '••••••••';
+        document.getElementById('iabEyeBtn').innerHTML = _iabPassVisible ? '<i class="ph-bold ph-eye-slash"></i>' : '<i class="ph-bold ph-eye"></i>';
+    }
+
+    function iabCopyPass() {
+        const pw = _iabCurrentLink.pass || '';
+        navigator.clipboard.writeText(pw).catch(() => {
+            const el = document.createElement('textarea');
+            el.value = pw; document.body.appendChild(el); el.select(); document.execCommand('copy'); document.body.removeChild(el);
+        });
+        const btn = event.currentTarget;
+        const orig = btn.innerHTML;
+        btn.innerHTML = '<i class="ph-bold ph-check"></i> Copied!';
+        btn.style.background = '#dcfce7'; btn.style.color = '#16a34a'; btn.style.borderColor = '#86efac';
+        setTimeout(() => { btn.innerHTML = orig; btn.style.background = ''; btn.style.color = ''; btn.style.borderColor = ''; }, 1800);
+    }
+
+    function iabCopyPassBar() {
+        const pw = _iabCurrentLink.pass || '';
+        navigator.clipboard.writeText(pw).catch(() => {
+            const el = document.createElement('textarea');
+            el.value = pw; document.body.appendChild(el); el.select(); document.execCommand('copy'); document.body.removeChild(el);
+        });
+        const btn = event.currentTarget;
+        btn.textContent = '✓ Copied';
+        setTimeout(() => { btn.textContent = 'Copy Pass'; }, 1800);
+    }
+
 
     // -- SPARE PART PDFS
 
@@ -2395,5 +2552,71 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         }
     }
 </script>
+    <!-- ── In-App Browser Overlay ── -->
+    <div id="inAppBrowser" style="position:fixed; inset:0; z-index:600; background:#0f172a; display:flex; flex-direction:column; transform:translateY(100%); transition:transform 0.35s cubic-bezier(0.25,1,0.5,1); pointer-events:none; opacity:0;">
+
+        <!-- Top Bar -->
+        <div style="background:#1e293b; padding:12px 16px; display:flex; align-items:center; gap:10px; flex-shrink:0; padding-top:max(12px,env(safe-area-inset-top));">
+            <button onclick="closeInAppBrowser()" style="background:#334155; border:none; border-radius:50%; width:38px; height:38px; display:flex; align-items:center; justify-content:center; color:white; font-size:1.2rem; cursor:pointer; flex-shrink:0;"><i class="ph-bold ph-arrow-left"></i></button>
+            <div style="flex:1; min-width:0;">
+                <div id="inAppTitle" style="font-weight:800; color:white; font-size:0.95rem; font-family:'Outfit',sans-serif; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Website</div>
+                <div id="inAppUrl" style="font-size:0.68rem; color:#64748b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:1px;"></div>
+            </div>
+            <button onclick="refreshInApp()" style="background:#334155; border:none; border-radius:50%; width:36px; height:36px; display:flex; align-items:center; justify-content:center; color:white; font-size:1rem; cursor:pointer; flex-shrink:0;"><i class="ph-bold ph-arrows-clockwise"></i></button>
+            <button onclick="inAppOpenExternal()" style="background:#334155; border:none; border-radius:50%; width:36px; height:36px; display:flex; align-items:center; justify-content:center; color:white; font-size:1rem; cursor:pointer; flex-shrink:0;" title="Open in browser"><i class="ph-bold ph-arrow-square-out"></i></button>
+        </div>
+
+        <!-- Loading spinner -->
+        <div id="inAppLoader" style="position:absolute; top:62px; left:0; right:0; bottom:0; background:#f1f5f9; display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:2;">
+            <div style="width:44px; height:44px; border:4px solid #e2e8f0; border-top-color:var(--primary); border-radius:50%; animation:spin 0.8s linear infinite; margin-bottom:16px;"></div>
+            <div style="font-size:0.9rem; color:#64748b; font-weight:600;">Loading page…</div>
+        </div>
+
+        <!-- iframe -->
+        <iframe id="inAppFrame" src="about:blank" style="flex:1; border:none; width:100%; background:white; position:relative; z-index:1;" allow="fullscreen" sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"></iframe>
+
+        <!-- Blocked / Error screen -->
+        <div id="inAppErr" style="display:none; position:absolute; top:62px; left:0; right:0; bottom:0; background:#f8fafc; flex-direction:column; align-items:center; justify-content:center; padding:24px; text-align:center; z-index:3; overflow-y:auto;">
+            <i class="ph-fill ph-shield-warning" style="font-size:3rem; color:#f59e0b; margin-bottom:12px;"></i>
+            <h3 style="font-family:'Outfit',sans-serif; font-size:1.1rem; color:#1e293b; margin:0 0 8px;">Page blocked in-app</h3>
+            <p style="color:#64748b; font-size:0.85rem; margin:0 0 20px; line-height:1.5; max-width:320px;">This site has a security policy that prevents embedding. Open it in your browser and paste the credentials below.</p>
+
+            <!-- Credentials display -->
+            <div id="inAppCreds" style="width:100%; max-width:380px; background:white; border-radius:16px; border:1px solid #e2e8f0; padding:18px; margin-bottom:20px; text-align:left; box-shadow:0 4px 12px rgba(0,0,0,0.06);">
+                <div style="font-size:0.7rem; font-weight:800; color:#94a3b8; text-transform:uppercase; letter-spacing:1px; margin-bottom:12px; display:flex; align-items:center; gap:6px;"><i class="ph-fill ph-key" style="color:var(--primary);"></i> Saved Login</div>
+                <div style="margin-bottom:12px;">
+                    <div style="font-size:0.7rem; font-weight:700; color:#94a3b8; margin-bottom:4px;">USERNAME</div>
+                    <div style="display:flex; align-items:center; gap:8px; background:#f8fafc; border-radius:10px; padding:10px 12px;">
+                        <span id="errUser" style="flex:1; font-weight:700; color:#1e293b; font-size:0.95rem; word-break:break-all;"></span>
+                        <button onclick="iabCopy('errUser')" style="background:#eff6ff; border:1px solid #bfdbfe; color:var(--primary); border-radius:8px; padding:6px 10px; font-size:0.8rem; font-weight:800; cursor:pointer; flex-shrink:0;"><i class="ph-bold ph-copy"></i> Copy</button>
+                    </div>
+                </div>
+                <div>
+                    <div style="font-size:0.7rem; font-weight:700; color:#94a3b8; margin-bottom:4px;">PASSWORD</div>
+                    <div style="display:flex; align-items:center; gap:8px; background:#f8fafc; border-radius:10px; padding:10px 12px;">
+                        <span id="errPass" style="flex:1; font-weight:700; color:#1e293b; font-size:0.95rem; font-family:'Courier New',monospace; letter-spacing:2px;">••••••••</span>
+                        <button onclick="iabTogglePass()" id="iabEyeBtn" style="background:none; border:none; color:#64748b; cursor:pointer; font-size:1.1rem; padding:0 4px;"><i class="ph-bold ph-eye"></i></button>
+                        <button onclick="iabCopyPass()" style="background:#eff6ff; border:1px solid #bfdbfe; color:var(--primary); border-radius:8px; padding:6px 10px; font-size:0.8rem; font-weight:800; cursor:pointer; flex-shrink:0;"><i class="ph-bold ph-copy"></i> Copy</button>
+                    </div>
+                </div>
+            </div>
+
+            <button onclick="inAppOpenExternal()" style="background:linear-gradient(135deg,var(--primary),#2563eb); color:white; border:none; border-radius:12px; padding:14px 28px; font-weight:800; font-size:0.95rem; cursor:pointer; font-family:'Inter',sans-serif; display:flex; align-items:center; gap:8px; box-shadow:0 4px 15px rgba(59,130,246,0.35);"><i class="ph-bold ph-arrow-square-out"></i> Open in Browser</button>
+        </div>
+
+        <!-- Credentials bottom bar (for pages that DO load in iframe) -->
+        <div id="inAppCredsBar" style="display:none; background:#1e293b; padding:10px 16px; flex-shrink:0; border-top:1px solid #334155;">
+            <div style="display:flex; align-items:center; gap:10px;">
+                <i class="ph-fill ph-key" style="color:#f59e0b; font-size:1.1rem; flex-shrink:0;"></i>
+                <div style="flex:1; min-width:0;">
+                    <span id="barUser" style="font-size:0.8rem; color:#94a3b8; font-weight:600;"></span>
+                </div>
+                <button onclick="iabCopy('barUser')" style="background:#334155; border:none; color:#94a3b8; border-radius:8px; padding:6px 10px; font-size:0.75rem; font-weight:700; cursor:pointer; white-space:nowrap;">Copy User</button>
+                <button onclick="iabCopyPassBar()" style="background:#334155; border:none; color:#94a3b8; border-radius:8px; padding:6px 10px; font-size:0.75rem; font-weight:700; cursor:pointer; white-space:nowrap;">Copy Pass</button>
+            </div>
+        </div>
+    </div>
+
+
 </body>
 </html>
