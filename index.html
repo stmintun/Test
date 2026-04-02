@@ -79,13 +79,13 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         .logo-text { font-family: 'Outfit', sans-serif; font-size: 1.5rem; font-weight: 800; letter-spacing: -0.5px; margin: 0; }
         .badge-pro { background: linear-gradient(135deg, var(--warning), #f97316); color: white; font-size: 0.65rem; padding: 3px 8px; border-radius: 10px; vertical-align: super; font-weight: 800; }
         
-        .main-search-container { padding: 0 20px; max-width: 600px; margin: -30px auto 25px auto; position: relative; z-index: 15; }
+        .main-search-container { padding: 0 16px; margin: -30px 0 20px 0; position: relative; z-index: 15; }
         .search-wrapper { position: relative; width: 100%; display: flex; align-items: center; }
         .search-icon { position: absolute; left: 18px; font-size: 1.3rem; color: var(--text-muted); }
         .main-search-input { width: 100%; padding: 20px 20px 20px 50px; border-radius: var(--radius-lg); border: 2px solid transparent; background: rgba(255,255,255,0.95); backdrop-filter: blur(10px); box-shadow: var(--shadow-float); font-size: 1rem; font-family: 'Inter', sans-serif; font-weight: 500; outline: none; transition: var(--transition); }
         .main-search-input:focus { background: var(--surface); border-color: var(--primary); box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15), var(--shadow-float); }
 
-        .dashboard-container { padding: 20px 20px 0 20px; max-width: 600px; margin: 0 auto; }
+        .dashboard-container { padding: 16px 16px 0 16px; box-sizing: border-box; }
 
         /* ── Long-press hold ring ── */
         .data-card { position: relative; overflow: hidden; }
@@ -93,9 +93,9 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         .hold-ring { position: absolute; inset: 0; pointer-events: none; }
         .hold-ring svg { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 48px; height: 48px; opacity: 0; transition: opacity 0.15s; }
         .data-card.holding .hold-ring svg { opacity: 1; }
-        .hold-ring circle.track { fill: none; stroke: #e2e8f0; stroke-width: 4; }
-        .hold-ring circle.progress { fill: none; stroke: var(--primary); stroke-width: 4; stroke-linecap: round;
-            stroke-dasharray: 113; stroke-dashoffset: 113; transform-origin: center; transform: rotate(-90deg);
+        .hold-ring circle.ring-track { fill: none; stroke: #e2e8f0; stroke-width: 4; }
+        .hold-ring circle.ring-fill  { fill: none; stroke: var(--primary); stroke-width: 4; stroke-linecap: round;
+            stroke-dasharray: 100; stroke-dashoffset: 100; transform-origin: center; transform: rotate(-90deg);
             transition: stroke-dashoffset linear; }
 
         /* ── Part Action Sheet ── */
@@ -119,9 +119,9 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         .edit-field-input:focus { border-color: var(--primary); background: white; }
         .section-title { font-family: 'Outfit', sans-serif; font-size: 1.1rem; font-weight: 800; color: var(--text-muted); margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
         
-        .dashboard { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 30px; }
+        .dashboard { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-bottom: 28px; width: 100%; }
         
-        .menu-card { display: flex; flex-direction: column; justify-content: space-between; padding: 18px; border-radius: var(--radius-lg); border: none; cursor: pointer; text-decoration: none; background: var(--surface); box-shadow: var(--shadow-sm); transition: var(--transition); position: relative; overflow: hidden; text-align: left; }
+        .menu-card { display: flex; flex-direction: column; justify-content: space-between; padding: 20px 16px 16px; border-radius: var(--radius-lg); border: none; cursor: pointer; text-decoration: none; background: var(--surface); box-shadow: var(--shadow-sm); transition: var(--transition); position: relative; overflow: hidden; text-align: left; min-height: 110px; }
         
         .card-danger { background: linear-gradient(145deg, #ffffff, var(--danger-light)); border: 1px solid #fecaca; }
         .card-success { background: linear-gradient(145deg, #ffffff, var(--success-light)); border: 1px solid #a7f3d0; }
@@ -158,7 +158,7 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         .back-btn { background: var(--surface); color: var(--text-main); border: 1px solid #e2e8f0; padding: 10px 16px; border-radius: 30px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 0.9rem; transition: var(--transition); box-shadow: var(--shadow-sm); }
         .back-btn:active { background: #e2e8f0; transform: scale(0.95); }
         .view-title { margin: 0; font-family: 'Outfit', sans-serif; font-size: 1.15rem; font-weight: 800; color: var(--dark); text-transform: uppercase; letter-spacing: 0.5px;}
-        .sec-container { padding: 20px; max-width: 600px; margin: 0 auto; display: flex; flex-direction: column; gap: 15px; }
+        .sec-container { padding: 16px; width: 100%; display: flex; flex-direction: column; gap: 12px; box-sizing: border-box; }
 
         .local-search-container { position: sticky; top: 60px; background: rgba(248, 250, 252, 0.95); backdrop-filter: blur(12px); padding: 10px 20px 15px 20px; z-index: 105; border-bottom: 1px solid rgba(0,0,0,0.05); margin-top: -10px; margin-bottom: 5px; }
         .local-search-input { width: 100%; padding: 12px 15px 12px 40px; border-radius: var(--radius-sm); border: 1px solid #cbd5e1; background: white; font-size: 0.95rem; font-family: 'Inter', sans-serif; font-weight: 500; outline: none; transition: var(--transition); }
