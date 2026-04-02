@@ -749,13 +749,41 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         if(found === 0) content.innerHTML = `<div class="empty-state"><i class="ph-fill ph-magnifying-glass empty-icon"></i><h3>No matches found</h3></div>`;
     }
 
+    // ── Part links (manual pins) persisted to localStorage ──────────
+    let partLinks = {};
+    try { partLinks = JSON.parse(localStorage.getItem('mins_part_links')) || {}; } catch(e) {}
+    function savePartLinks() { localStorage.setItem('mins_part_links', JSON.stringify(partLinks)); }
+
+    // Extracts meaningful words from an error code object for matching
+    function extractKeywords(item) {
+        const raw = Object.values(item).join(' ').toLowerCase();
+        // Strip common noise words
+        const noise = new Set(['the','and','or','for','to','in','of','a','an','is','are','not','if','check','call','verify','replace','via','with','by','on','at','from','due','be','was','has','have','been','that','this','when','do','run']);
+        return raw.replace(/[^a-z0-9\s]/g,' ')
+            .split(/\s+/)
+            .filter(w => w.length > 3 && !noise.has(w));
+    }
+
+    // Score a part against a set of keywords
+    function scorePartMatch(part, keywords) {
+        const desc = (part.Description || '').toLowerCase();
+        const id   = (part.PartID || '').toLowerCase();
+        let score = 0;
+        for (const kw of keywords) {
+            if (desc.includes(kw)) score += 2;
+            if (id.includes(kw))   score += 1;
+        }
+        return score;
+    }
+
     function showDetails(item, type) {
         currentPartID = item.PartID || item.Code || item['Error Code'] || item['Unit S/N'] || item['Error Code / Fault Name'] || 'Unknown';
         const b = document.getElementById('modalBody');
-        const isPart = (type === 'parts' || type === 'out');
-        
+        const isPart    = (type === 'parts' || type === 'out');
+        const isErrCode = !isPart && type !== 'pan';
+
         let html = "";
-        
+
         // ── Photo Section for parts ──
         if (isPart) {
             const photoSrc = loadPhoto(currentPartID);
@@ -780,14 +808,14 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
                 </div>
             `;
         }
-        
-        // ── Read-only detail rows (all item types) ──
+
+        // ── Read-only detail rows ──
         Object.entries(item).forEach(([k, v]) => {
             if (v !== undefined && v !== "") {
                 html += `<div class="detail-row"><div class="detail-lbl">${k}</div><div class="detail-val">${v}</div></div>`;
             }
         });
-        
+
         if (isPart) {
             html += `
                 <div style="display:flex; gap:10px; margin-top:20px;">
@@ -797,9 +825,125 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
             `;
         }
 
+        // ── Associated Parts section (error codes only) ──────────────
+        if (isErrCode) {
+            const errKey = [type, currentPartID].join('::');
+
+            // Keyword-based auto-matches
+            const keywords = extractKeywords(item);
+            const allParts = db.parts || [];
+            const scored = allParts
+                .map(p => ({ part: p, score: scorePartMatch(p, keywords) }))
+                .filter(x => x.score > 0)
+                .sort((a, b) => b.score - a.score)
+                .slice(0, 6);
+
+            // Manually pinned parts
+            const pinned = (partLinks[errKey] || [])
+                .map(pid => allParts.find(p => p.PartID === pid))
+                .filter(Boolean);
+
+            html += `
+            <div style="margin-top:24px; border-top:2px solid #f1f5f9; padding-top:18px;">
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
+                    <div style="font-size:0.75rem; font-weight:800; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px; display:flex; align-items:center; gap:6px;">
+                        <i class="ph-fill ph-wrench" style="color:var(--primary);"></i> Associated Parts
+                    </div>
+                    <button onclick="openPartLinker('${errKey.replace(/'/g,"&apos;")}')" style="background:#eff6ff; color:var(--primary); border:1px solid #bfdbfe; border-radius:20px; padding:6px 12px; font-size:0.78rem; font-weight:800; cursor:pointer; font-family:'Inter',sans-serif; display:flex; align-items:center; gap:5px;">
+                        <i class="ph-bold ph-link"></i> Link Part
+                    </button>
+                </div>`;
+
+            if (pinned.length > 0) {
+                html += `<div style="font-size:0.7rem; font-weight:800; color:#16a34a; text-transform:uppercase; letter-spacing:0.8px; margin-bottom:8px;"><i class="ph-fill ph-push-pin"></i> Pinned</div>`;
+                pinned.forEach(p => {
+                    const stock = p.Stock > 0 ? `<span style="background:#dcfce7; color:#16a34a; border-radius:8px; padding:3px 8px; font-size:0.7rem; font-weight:800;">${p.Stock} in stock</span>` : `<span style="background:#fef2f2; color:#ef4444; border-radius:8px; padding:3px 8px; font-size:0.7rem; font-weight:800;">Out of stock</span>`;
+                    html += `
+                    <div style="background:#f0fdf4; border:1px solid #86efac; border-radius:12px; padding:12px 14px; margin-bottom:8px; display:flex; align-items:center; justify-content:space-between; cursor:pointer; gap:10px;" onclick='showDetails(${JSON.stringify(p).replace(/'/g,"&apos;")}, "parts")'>
+                        <div style="flex:1;">
+                            <div style="font-weight:800; font-size:0.9rem; color:var(--primary); font-family:'Outfit';">${p.PartID}</div>
+                            <div style="font-size:0.8rem; color:#374151; margin-top:2px; line-height:1.3;">${p.Description}</div>
+                        </div>
+                        <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px;">${stock}<button onclick="event.stopPropagation(); unlinkPart('${errKey.replace(/'/g,"&apos;")}', '${p.PartID}')" style="background:none; border:none; color:#94a3b8; cursor:pointer; padding:0; font-size:0.9rem;"><i class="ph-bold ph-x"></i></button></div>
+                    </div>`;
+                });
+            }
+
+            if (scored.length > 0) {
+                html += `<div style="font-size:0.7rem; font-weight:800; color:#64748b; text-transform:uppercase; letter-spacing:0.8px; margin-bottom:8px; margin-top:${pinned.length ? '12px' : '0'};"><i class="ph-fill ph-magic-wand"></i> Smart Suggestions</div>`;
+                scored.forEach(({ part: p, score }) => {
+                    const stock = p.Stock > 0 ? `<span style="background:#dcfce7; color:#16a34a; border-radius:8px; padding:3px 8px; font-size:0.7rem; font-weight:800;">${p.Stock} in stock</span>` : `<span style="background:#fef2f2; color:#ef4444; border-radius:8px; padding:3px 8px; font-size:0.7rem; font-weight:800;">Out of stock</span>`;
+                    const relevanceDots = '●'.repeat(Math.min(score, 5));
+                    html += `
+                    <div style="background:var(--surface); border:1px solid #e2e8f0; border-radius:12px; padding:12px 14px; margin-bottom:8px; cursor:pointer; display:flex; align-items:center; justify-content:space-between; gap:10px;" onclick='showDetails(${JSON.stringify(p).replace(/'/g,"&apos;")}, "parts")'>
+                        <div style="flex:1;">
+                            <div style="font-weight:800; font-size:0.9rem; color:var(--primary); font-family:'Outfit';">${p.PartID}</div>
+                            <div style="font-size:0.8rem; color:#374151; margin-top:2px; line-height:1.3;">${p.Description}</div>
+                            <div style="font-size:0.65rem; color:#94a3b8; margin-top:4px; font-weight:700;">Relevance: <span style="color:var(--warning);">${relevanceDots}</span></div>
+                        </div>
+                        <div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px;">${stock}<button onclick="event.stopPropagation(); pinPart('${errKey.replace(/'/g,"&apos;")}', '${p.PartID}')" style="background:#eff6ff; border:1px solid #bfdbfe; color:var(--primary); border-radius:8px; padding:4px 9px; font-size:0.75rem; font-weight:800; cursor:pointer; font-family:'Inter',sans-serif; white-space:nowrap;"><i class="ph-bold ph-push-pin"></i> Pin</button></div>
+                    </div>`;
+                });
+            }
+
+            if (pinned.length === 0 && scored.length === 0) {
+                html += `<div style="text-align:center; padding:20px; color:var(--text-muted); font-size:0.9rem;"><i class="ph-fill ph-wrench" style="font-size:2rem; color:#cbd5e1; display:block; margin-bottom:8px;"></i>No matching parts found.<br>Use <strong>Link Part</strong> to manually associate parts.</div>`;
+            }
+
+            html += `</div>`;
+        }
+
         b.innerHTML = html;
         document.getElementById('detailModal').classList.add('active');
     }
+
+    // ── Part Linker ─────────────────────────────────────────────────
+    function openPartLinker(errKey) {
+        const q = prompt('Enter Part ID or keyword to search:');
+        if (!q) return;
+        const allParts = db.parts || [];
+        const ql = q.toLowerCase();
+        const matches = allParts.filter(p =>
+            (p.PartID || '').toLowerCase().includes(ql) ||
+            (p.Description || '').toLowerCase().includes(ql)
+        ).slice(0, 10);
+
+        if (matches.length === 0) { alert('No parts found for: ' + q); return; }
+
+        const list = matches.map((p, i) => `${i + 1}. [${p.PartID}] ${p.Description} (Stock: ${p.Stock})`).join('\n');
+        const choice = prompt(`Found ${matches.length} parts — enter number to pin:\n\n${list}`);
+        const idx = parseInt(choice) - 1;
+        if (isNaN(idx) || idx < 0 || idx >= matches.length) return;
+
+        pinPart(errKey, matches[idx].PartID);
+        alert(`✓ Pinned: ${matches[idx].PartID}`);
+    }
+
+    function pinPart(errKey, partID) {
+        if (!partLinks[errKey]) partLinks[errKey] = [];
+        if (!partLinks[errKey].includes(partID)) {
+            partLinks[errKey].push(partID);
+            savePartLinks();
+        }
+        // Refresh modal if still open
+        const modal = document.getElementById('detailModal');
+        if (modal.classList.contains('active')) {
+            const allParts = db.parts || [];
+            const pinned = (partLinks[errKey] || []).map(pid => allParts.find(p => p.PartID === pid)).filter(Boolean);
+            // Re-render pinned section only
+            const pinnedContainer = modal.querySelector('[data-pinned]');
+            if (pinnedContainer) pinnedContainer.innerHTML = pinned.map(p => `<div>${p.PartID} — ${p.Description}</div>`).join('');
+        }
+    }
+
+    function unlinkPart(errKey, partID) {
+        if (!partLinks[errKey]) return;
+        partLinks[errKey] = partLinks[errKey].filter(id => id !== partID);
+        savePartLinks();
+        // Close and reopen to refresh
+        document.getElementById('detailModal').classList.remove('active');
+    }
+
 
     function closeModal(e) {
         if(e.target.id === 'detailModal' || e.target.classList.contains('modal-drag-handle') || e.target.innerText === 'Close Details') {
