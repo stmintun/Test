@@ -14,11 +14,32 @@
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     
     <!-- Link to external Data file -->
-    <!-- QR Scanner Modal -->
+    <!-- Fullscreen Notes Editor -->
+<div id="notesFullscreenModal" style="display:none; position:fixed; inset:0; z-index:9998; background:#f8fafc; flex-direction:column;">
+    <div style="position:sticky; top:0; background:rgba(248,250,252,0.97); backdrop-filter:blur(12px); padding:14px 20px; border-bottom:1px solid #e2e8f0; display:flex; align-items:center; justify-content:space-between; z-index:10;">
+        <button id="notesBackBtn" style="background:none; border:none; color:var(--primary); font-weight:800; font-size:0.9rem; cursor:pointer; font-family:'Inter',sans-serif; display:flex; align-items:center; gap:5px; padding:0;">
+            <i class="ph-bold ph-arrow-left"></i> Back
+        </button>
+        <div style="font-family:'Outfit',sans-serif; font-weight:800; font-size:1rem; color:#1e293b; text-transform:uppercase; letter-spacing:0.5px; display:flex; align-items:center; gap:6px;">
+            <i class="ph-fill ph-note-pencil" style="color:#f59e0b;"></i> Notes
+        </div>
+        <button id="notesSaveBtn" style="background:#6366f1; color:white; border:none; border-radius:20px; padding:8px 16px; font-weight:800; font-size:0.82rem; cursor:pointer; font-family:'Inter',sans-serif; display:flex; align-items:center; gap:5px;">
+            <i class="ph-bold ph-floppy-disk"></i> Save
+        </button>
+    </div>
+    <textarea id="notesFullArea" placeholder="Type your notes here…"
+        style="flex:1; width:100%; border:none; padding:20px; font-size:1rem; font-family:'Inter',sans-serif; line-height:1.7; color:#1e293b; background:#f8fafc; outline:none; resize:none; box-sizing:border-box;"
+    ></textarea>
+    <div id="notesSavedToast" style="display:none; position:fixed; bottom:30px; left:50%; transform:translateX(-50%); background:#1e293b; color:white; padding:10px 24px; border-radius:30px; font-size:0.85rem; font-weight:700; font-family:'Inter',sans-serif; box-shadow:0 4px 20px rgba(0,0,0,0.2); z-index:11;">
+        <i class="ph-fill ph-check-circle" style="color:#34d399;"></i> Notes saved
+    </div>
+</div>
+
+<!-- QR Scanner Modal -->
 <div id="qrScannerModal" style="display:none; position:fixed; inset:0; z-index:9999; background:#000;">
     <div style="position:absolute; top:0; left:0; right:0; padding:16px 20px; display:flex; align-items:center; justify-content:space-between; z-index:10001; background:linear-gradient(180deg,rgba(0,0,0,0.7),transparent);">
         <div style="color:white; font-family:'Outfit',sans-serif; font-weight:800; font-size:1.1rem; display:flex; align-items:center; gap:8px;">
-            <i class="ph-fill ph-qr-code"></i> QR Scanner
+            <i class="ph-fill ph-qr-code"></i> QR & Barcode Scanner
         </div>
         <button onclick="closeQRScanner()" style="background:rgba(255,255,255,0.15); border:none; color:white; border-radius:50%; width:40px; height:40px; font-size:1.2rem; cursor:pointer; display:flex; align-items:center; justify-content:center;">
             <i class="ph-bold ph-x"></i>
@@ -480,7 +501,7 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
             </div>
         </div>
         <div style="text-align:center; padding: 18px 0 28px; color:#cbd5e1; font-size:0.65rem; font-family:'Inter',sans-serif; font-weight:600; letter-spacing:2px; text-transform:uppercase; user-select:none;">
-            MIN'S DATABASE PRO &nbsp;&middot;&nbsp; Rev 2.6.0 &nbsp;&middot;&nbsp; Apr 2026
+            MIN'S DATABASE PRO &nbsp;&middot;&nbsp; Rev 2.9.0 &nbsp;&middot;&nbsp; Apr 2026
         </div>
     </main>
 
@@ -3858,22 +3879,24 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         sc.innerHTML = '';
         sc.style.padding = '16px';
 
-        // ── Notes ──
+        // ── Notes (preview card → fullscreen editor) ──
         const notes = getDiagNotes(folderId);
         const noteEl = document.createElement('div');
-        noteEl.style.cssText = 'margin-bottom:16px;';
+        noteEl.style.cssText = 'margin-bottom:16px;cursor:pointer;';
+        const preview = notes ? notes.substring(0, 120).replace(/\n/g, ' ') + (notes.length > 120 ? '...' : '') : 'No notes yet. Tap to add...';
         noteEl.innerHTML = `
-            <div style="font-size:0.68rem;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;display:flex;align-items:center;gap:5px;">
-                <i class="ph-fill ph-note-pencil" style="color:#f59e0b;"></i> Notes
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                <div style="font-size:0.68rem;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:1px;display:flex;align-items:center;gap:5px;">
+                    <i class="ph-fill ph-note-pencil" style="color:#f59e0b;"></i> Notes
+                </div>
+                <div style="font-size:0.68rem;font-weight:700;color:#6366f1;">
+                    <i class="ph-bold ph-arrow-square-out"></i> Open
+                </div>
             </div>
-            <textarea id="diagNoteArea" placeholder="Type your notes here…"
-                style="width:100%;min-height:120px;border:1.5px solid #e2e8f0;border-radius:12px;padding:12px 14px;font-size:0.9rem;font-family:'Inter',sans-serif;resize:vertical;box-sizing:border-box;outline:none;line-height:1.5;color:#1e293b;background:white;"
-                onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='#e2e8f0'"
-            >${notes}</textarea>
-            <button onclick="saveDiagNotes('${folderId}',document.getElementById('diagNoteArea').value); this.textContent='Saved ✓'; setTimeout(()=>{this.textContent='Save Notes';},2000);"
-                style="margin-top:8px;background:#6366f1;color:white;border:none;border-radius:10px;padding:10px 20px;font-weight:800;font-size:0.85rem;cursor:pointer;font-family:'Inter',sans-serif;">
-                Save Notes
-            </button>`;
+            <div style="background:white;border:1.5px solid #e2e8f0;border-radius:12px;padding:14px;font-size:0.88rem;color:${notes ? '#1e293b' : '#94a3b8'};line-height:1.5;font-family:'Inter',sans-serif;min-height:50px;">
+                ${preview}
+            </div>`;
+        noteEl.onclick = function() { openFullscreenNotes(folderId); };
         sc.appendChild(noteEl);
 
         // ── PDFs ──
@@ -3937,8 +3960,11 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         const files = Array.from(event.target.files);
         if (!files.length) return;
         let done = 0;
-        openDiagIDB(function(db) {
-            files.forEach(function(file) {
+        files.forEach(function(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const arrayBuf = e.target.result;
+                const pdfBlob = new Blob([arrayBuf], { type: 'application/pdf' });
                 const id = target.folderId + '_' + Date.now() + '_' + Math.random().toString(36).slice(2,5);
                 const rec = {
                     id: id,
@@ -3947,17 +3973,24 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
                     name: file.name,
                     size: file.size,
                     date: new Date().toLocaleDateString('en-AU', {day:'2-digit',month:'short',year:'numeric'}),
-                    blob: file
+                    blob: pdfBlob
                 };
-                const tx = db.transaction('pdfs','readwrite');
-                tx.objectStore('pdfs').put(rec);
-                tx.oncomplete = function() {
-                    done++;
-                    if (done === files.length) {
-                        loadDiagFolderPdfs(target.mode, target.folderId);
-                    }
-                };
-            });
+                openDiagIDB(function(db) {
+                    const tx = db.transaction('pdfs','readwrite');
+                    tx.objectStore('pdfs').put(rec);
+                    tx.oncomplete = function() {
+                        done++;
+                        if (done === files.length) {
+                            loadDiagFolderPdfs(target.mode, target.folderId);
+                        }
+                    };
+                    tx.onerror = function(err) {
+                        alert('Error saving PDF: ' + file.name);
+                        done++;
+                    };
+                });
+            };
+            reader.readAsArrayBuffer(file);
         });
         event.target.value = '';
     }
@@ -3966,10 +3999,21 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         openDiagIDB(function(db) {
             db.transaction('pdfs','readonly').objectStore('pdfs').get(pdfId).onsuccess = function(e) {
                 const pdf = e.target.result;
-                if (!pdf || !pdf.blob) { alert('PDF not found.'); return; }
-                const url = URL.createObjectURL(pdf.blob);
+                if (!pdf || !pdf.blob) { alert('PDF not found. Try re-uploading the file.'); return; }
+                var blob = pdf.blob;
+                // If blob is an ArrayBuffer, convert it
+                if (blob instanceof ArrayBuffer) {
+                    blob = new Blob([blob], { type: 'application/pdf' });
+                }
+                // If it's not already a Blob, try wrapping
+                if (!(blob instanceof Blob)) {
+                    try { blob = new Blob([blob], { type: 'application/pdf' }); } catch(ex) {
+                        alert('Cannot open this PDF. Try re-uploading.'); return;
+                    }
+                }
+                const url = URL.createObjectURL(blob);
                 window.open(url, '_blank');
-                setTimeout(function() { URL.revokeObjectURL(url); }, 60000);
+                setTimeout(function() { URL.revokeObjectURL(url); }, 120000);
             };
         });
     }
@@ -3996,14 +4040,28 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         _qrLastResult = '';
 
         try {
-            _qrScanner = new Html5Qrcode("qrReader");
+            _qrScanner = new Html5Qrcode("qrReader", {
+                formatsToSupport: [
+                    Html5QrcodeSupportedFormats.QR_CODE,
+                    Html5QrcodeSupportedFormats.CODE_128,
+                    Html5QrcodeSupportedFormats.CODE_39,
+                    Html5QrcodeSupportedFormats.CODE_93,
+                    Html5QrcodeSupportedFormats.EAN_13,
+                    Html5QrcodeSupportedFormats.EAN_8,
+                    Html5QrcodeSupportedFormats.UPC_A,
+                    Html5QrcodeSupportedFormats.UPC_E,
+                    Html5QrcodeSupportedFormats.DATA_MATRIX,
+                    Html5QrcodeSupportedFormats.ITF
+                ]
+            });
             _qrScanner.start(
                 { facingMode: "environment" },
                 {
-                    fps: 10,
+                    fps: 15,
                     qrbox: function(viewfinderWidth, viewfinderHeight) {
-                        var s = Math.min(viewfinderWidth, viewfinderHeight);
-                        return { width: Math.floor(s * 0.7), height: Math.floor(s * 0.7) };
+                        var w = Math.floor(viewfinderWidth * 0.85);
+                        var h = Math.floor(viewfinderHeight * 0.4);
+                        return { width: Math.max(w, 250), height: Math.max(h, 150) };
                     },
                     aspectRatio: 1.0
                 },
@@ -4081,6 +4139,82 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         // Also put it in search
         document.getElementById('mainSearch').value = text;
         handleGlobalSearch();
+    }
+
+    
+    // ── Vault Folder Fullscreen Notes ─────────────────────────────
+    window._vaultNotesFolderId = null;
+
+    function openVaultFolderNotes(folderId) {
+        window._vaultNotesFolderId = folderId;
+        const folder = masterDrive[currentDriveCat].find(function(f){ return f.id === folderId; });
+        if (!folder) return;
+        const modal = document.getElementById('notesFullscreenModal');
+        const area  = document.getElementById('notesFullArea');
+        area.value  = folder.notes || '';
+        modal.style.display = 'flex';
+
+        document.getElementById('notesBackBtn').onclick = function() {
+            // Auto-save and close
+            folder.notes = area.value;
+            saveDrive();
+            modal.style.display = 'none';
+            window._vaultNotesFolderId = null;
+            viewFolder(folderId); // re-render with updated preview
+        };
+        document.getElementById('notesSaveBtn').onclick = function() {
+            folder.notes = area.value;
+            saveDrive();
+            var toast = document.getElementById('notesSavedToast');
+            toast.style.display = 'block';
+            setTimeout(function(){ toast.style.display='none'; }, 1800);
+        };
+        setTimeout(function(){ area.focus(); }, 200);
+    }
+
+        // ══════════════════════════════════════════════════════════════
+    // FULLSCREEN NOTES EDITOR
+    // ══════════════════════════════════════════════════════════════
+    window._notesFolderId = null;
+
+    function openFullscreenNotes(folderId) {
+        window._notesFolderId = folderId;
+        const modal = document.getElementById('notesFullscreenModal');
+        const area = document.getElementById('notesFullArea');
+        area.value = getDiagNotes(folderId);
+        modal.style.display = 'flex';
+
+        // Back button
+        document.getElementById('notesBackBtn').onclick = function() {
+            closeFullscreenNotes();
+        };
+
+        // Save button
+        document.getElementById('notesSaveBtn').onclick = function() {
+            saveDiagNotes(folderId, area.value);
+            // Show toast
+            var toast = document.getElementById('notesSavedToast');
+            toast.style.display = 'block';
+            setTimeout(function() { toast.style.display = 'none'; }, 1800);
+        };
+
+        // Focus the textarea
+        setTimeout(function() { area.focus(); }, 200);
+    }
+
+    function closeFullscreenNotes() {
+        var fid = window._notesFolderId;
+        var area = document.getElementById('notesFullArea');
+        // Auto-save on close
+        if (fid && area) {
+            saveDiagNotes(fid, area.value);
+        }
+        document.getElementById('notesFullscreenModal').style.display = 'none';
+        // Refresh the subfolder view if still open
+        if (window._diagSubState && window._diagSubState.folderId === fid) {
+            renderDiagSubfolderContent(window._diagSubState.mode, fid);
+        }
+        window._notesFolderId = null;
     }
 
         // ── Long-press (3 sec hold) logic ────────────────────────────────
@@ -4490,14 +4624,28 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         const c = document.getElementById('secContent');
         
         if(type === 'temp') {
-            document.getElementById('secTitle').innerText = "Avg Temp Calculator";
+            document.getElementById('secTitle').innerText = "Temp Calculator";
             c.innerHTML = `
                 <div class="calc-panel">
-                    <div class="calc-input-group">
-                        <input type="number" id="tMin" class="calc-input" placeholder="Min Temp °C" step="0.1" oninput="doTempCalc()">
-                        <input type="number" id="tMax" class="calc-input" placeholder="Max Temp °C" step="0.1" oninput="doTempCalc()">
+                    <label style="font-size:0.8rem; font-weight:700; color:var(--text-muted);">Min Temp (°C)</label>
+                    <input type="number" id="tMin" class="calc-input" style="width:100%; margin-bottom:15px;" placeholder="e.g. 134.2" step="0.1" oninput="doTempCalc()">
+                    <label style="font-size:0.8rem; font-weight:700; color:var(--text-muted);">Max Temp (°C)</label>
+                    <input type="number" id="tMax" class="calc-input" style="width:100%; margin-bottom:15px;" placeholder="e.g. 137.8" step="0.1" oninput="doTempCalc()">
+                    <div class="calc-res-circle"><div class="calc-res-val" id="tRes">--</div><div class="calc-res-lbl">Average °C</div></div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:18px;">
+                        <div style="background:#f8fafc; border:1.5px solid #e2e8f0; border-radius:14px; padding:14px; text-align:center;">
+                            <div style="font-size:1.3rem; font-weight:900; color:var(--primary); font-family:'Outfit',sans-serif;" id="tResF">--</div>
+                            <div class="calc-res-lbl">°F</div>
+                        </div>
+                        <div style="background:#f8fafc; border:1.5px solid #e2e8f0; border-radius:14px; padding:14px; text-align:center;">
+                            <div style="font-size:1.3rem; font-weight:900; color:var(--primary); font-family:'Outfit',sans-serif;" id="tResK">--</div>
+                            <div class="calc-res-lbl">Kelvin</div>
+                        </div>
                     </div>
-                    <div class="calc-res-circle"><div class="calc-res-val" id="tRes">--</div><div class="calc-res-lbl">Average</div></div>
+                    <div style="background:#f8fafc; border:1.5px solid #e2e8f0; border-radius:14px; padding:14px; text-align:center; margin-top:12px;">
+                        <div style="font-size:1.3rem; font-weight:900; color:var(--coral); font-family:'Outfit',sans-serif;" id="tResRange">--</div>
+                        <div class="calc-res-lbl">°C Range (Max − Min)</div>
+                    </div>
                 </div>
             `;
         } 
@@ -4826,9 +4974,22 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
     }
 
     function doTempCalc() {
-        const min = parseFloat(document.getElementById('tMin').value);
-        const max = parseFloat(document.getElementById('tMax').value);
-        document.getElementById('tRes').innerText = (!isNaN(min) && !isNaN(max)) ? ((min + max) / 2).toFixed(1) : '--';
+        const mn = parseFloat(document.getElementById("tMin").value);
+        const mx = parseFloat(document.getElementById("tMax").value);
+        if (isNaN(mn) && isNaN(mx)) {
+            document.getElementById("tRes").textContent = "--";
+            document.getElementById("tResF").textContent = "--";
+            document.getElementById("tResK").textContent = "--";
+            document.getElementById("tResRange").textContent = "--";
+            return;
+        }
+        // If only one value entered, use it as the average
+        const avg = (!isNaN(mn) && !isNaN(mx)) ? ((mn + mx) / 2) : (!isNaN(mn) ? mn : mx);
+        const range = (!isNaN(mn) && !isNaN(mx)) ? Math.abs(mx - mn) : 0;
+        document.getElementById("tRes").textContent = avg.toFixed(2);
+        document.getElementById("tResF").textContent = ((avg * 9/5) + 32).toFixed(2);
+        document.getElementById("tResK").textContent = (avg + 273.15).toFixed(2);
+        document.getElementById("tResRange").textContent = range.toFixed(2);
     }
     function doFlowCalc() {
         const rate = parseFloat(document.getElementById('fRate').value);
@@ -5468,47 +5629,81 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
             `;
         }
 
-        let dateInputsHtml = '';
+
+        // Build notes preview (120 chars)
+        const notePreview = (folder.notes || '').substring(0, 120).replace(/\n/g, ' ')
+            + ((folder.notes || '').length > 120 ? '...' : '');
+        const noteDisplay = notePreview || 'No notes yet. Tap to add...';
+        const noteColor   = folder.notes ? '#1e293b' : '#94a3b8';
+
+        // Induction-specific styled cards
+        let inductionCardsHtml = '';
         if (currentDriveCat === 'inductions') {
-            dateInputsHtml = `
-                <div style="display:flex; gap:10px; margin-bottom:15px;">
-                    <div style="flex:1;">
-                        <label style="font-size:0.8rem; font-weight:700; color:var(--text-muted); display:block; margin-bottom:5px;">Start Date</label>
-                        <input type="date" id="fldStart" class="vault-input" value="${folder.startDate || ''}" oninput="updateFolderData()">
+            const expiry    = folder.expiry    || '';
+            const startDate = folder.startDate || '';
+            let statusBadge = '';
+            let statusColor = '#64748b';
+            if (expiry) {
+                const today = new Date(); today.setHours(0,0,0,0);
+                const exp   = new Date(expiry);
+                const diff  = Math.ceil((exp - today) / 86400000);
+                if (diff < 0)        { statusBadge = 'EXPIRED';        statusColor = '#ef4444'; }
+                else if (diff <= 30) { statusBadge = diff + ' days left'; statusColor = '#f59e0b'; }
+                else                 { statusBadge = 'VALID';           statusColor = '#22c55e'; }
+            }
+            inductionCardsHtml = `
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px;">
+                    <div style="background:#f8fafc; border:1.5px solid #e2e8f0; border-radius:14px; padding:14px; text-align:center;">
+                        <div style="font-size:0.68rem;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;display:flex;align-items:center;justify-content:center;gap:4px;">
+                            <i class="ph-fill ph-calendar-blank" style="color:#6366f1;"></i> Start Date
+                        </div>
+                        <input type="date" id="fldStart" class="vault-input" value="${startDate}"
+                            style="text-align:center; font-size:0.9rem; font-weight:700; border:none; background:transparent; outline:none; width:100%; color:#1e293b;"
+                            oninput="updateFolderData()">
                     </div>
-                    <div style="flex:1;">
-                        <label style="font-size:0.8rem; font-weight:700; color:var(--text-muted); display:block; margin-bottom:5px;">Expiry Date</label>
-                        <input type="date" id="fldExpiry" class="vault-input" value="${folder.expiry || ''}" oninput="updateFolderData()">
+                    <div style="background:#f8fafc; border:1.5px solid #e2e8f0; border-radius:14px; padding:14px; text-align:center;">
+                        <div style="font-size:0.68rem;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;display:flex;align-items:center;justify-content:center;gap:4px;">
+                            <i class="ph-fill ph-calendar-x" style="color:#ef4444;"></i> Expiry Date
+                        </div>
+                        <input type="date" id="fldExpiry" class="vault-input" value="${expiry}"
+                            style="text-align:center; font-size:0.9rem; font-weight:700; border:none; background:transparent; outline:none; width:100%; color:#1e293b;"
+                            oninput="updateFolderData()">
                     </div>
                 </div>
+                ${statusBadge ? `<div style="text-align:center; margin-bottom:16px;">
+                    <span style="background:${statusColor}22; color:${statusColor}; border:1.5px solid ${statusColor}55; border-radius:20px; padding:6px 18px; font-size:0.8rem; font-weight:800; letter-spacing:1px; text-transform:uppercase;">
+                        ${statusBadge}
+                    </span>
+                </div>` : ''}
             `;
         }
 
         c.innerHTML = `
-            <div class="calc-panel" style="padding:20px; border-radius:var(--radius-lg); margin-bottom:20px; box-shadow:var(--shadow-sm);">
+            <div class="calc-panel" style="padding:20px; border-radius:var(--radius-lg); margin-bottom:16px; box-shadow:var(--shadow-sm);">
                 <input type="text" id="fldName" class="folder-title-input" value="${folder.name}" placeholder="Folder Name" oninput="updateFolderData()">
-                
-                ${dateInputsHtml}
-                
-                <label style="font-size:0.8rem; font-weight:700; color:var(--text-muted); display:block; margin-bottom:5px;">Folder Notes</label>
-                <textarea id="fldNotes" class="vault-input" placeholder="Type notes here..." oninput="updateFolderData()">${folder.notes || ''}</textarea>
-            </div>
-            
-            <div style="background:var(--card-bg); padding:20px; border-radius:var(--radius-lg); margin-bottom:20px; box-shadow:var(--shadow-sm);">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                    <label style="font-weight:800; color:var(--dark); margin:0;">Attached Files</label>
+                ${inductionCardsHtml}
+
+                <!-- Notes preview card -->
+                <div style="font-size:0.68rem;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
+                    <span style="display:flex;align-items:center;gap:5px;"><i class="ph-fill ph-note-pencil" style="color:#f59e0b;"></i> Notes</span>
+                    <span style="color:#6366f1;font-size:0.68rem;font-weight:700;"><i class="ph-bold ph-arrow-square-out"></i> Open</span>
                 </div>
-                
-                <input type="file" id="folderFileUpload" class="vault-input" style="padding:10px; border: 1px solid #e2e8f0; border-radius: 8px; width: 100%; box-sizing: border-box; background: #f8fafc; margin-bottom:10px;">
-                <button class="btn btn-primary" style="width:100%; padding: 12px; font-weight: bold;" onclick="uploadFileToFolder('${id}')">
+                <div onclick="openVaultFolderNotes('${id}')" style="background:white;border:1.5px solid #e2e8f0;border-radius:12px;padding:14px;font-size:0.88rem;color:${noteColor};line-height:1.5;font-family:'Inter',sans-serif;min-height:48px;cursor:pointer;">
+                    ${noteDisplay}
+                </div>
+            </div>
+
+            <div style="background:var(--card-bg); padding:20px; border-radius:var(--radius-lg); margin-bottom:16px; box-shadow:var(--shadow-sm);">
+                <div style="font-size:0.68rem;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;display:flex;align-items:center;gap:5px;">
+                    <i class="ph-fill ph-files" style="color:var(--primary);"></i> Attached Files (${(folder.files||[]).length})
+                </div>
+                <input type="file" id="folderFileUpload" class="vault-input" style="padding:10px; border:1px solid #e2e8f0; border-radius:8px; width:100%; box-sizing:border-box; background:#f8fafc; margin-bottom:10px;">
+                <button class="btn btn-primary" style="width:100%; padding:12px; font-weight:bold;" onclick="uploadFileToFolder('${id}')">
                     <i class="ph-bold ph-upload-simple"></i> Upload File
                 </button>
-                
-                <div style="margin-top:20px;">
-                    ${filesHtml}
-                </div>
+                <div style="margin-top:16px;">${filesHtml}</div>
             </div>
-            
+
             <div style="display:flex; gap:10px;">
                 <button class="btn btn-secondary" style="flex:1" onclick="renderFolders()"><i class="ph-bold ph-arrow-left"></i> Back to Vault</button>
                 <button class="btn btn-danger" style="flex:1" onclick="deleteFolder('${id}')"><i class="ph-bold ph-trash"></i> Delete Folder</button>
@@ -5520,8 +5715,6 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         const folder = masterDrive[currentDriveCat].find(f => f.id === currentFolderID);
         if(folder) {
             const nameEl = document.getElementById('fldName');
-            const notesEl = document.getElementById('fldNotes');
-            
             if (nameEl) folder.name = nameEl.value;
             if (currentDriveCat === 'inductions') {
                 const startEl = document.getElementById('fldStart');
