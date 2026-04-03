@@ -457,7 +457,7 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
             </div>
         </div>
         <div style="text-align:center; padding: 18px 0 28px; color:#cbd5e1; font-size:0.65rem; font-family:'Inter',sans-serif; font-weight:600; letter-spacing:2px; text-transform:uppercase; user-select:none;">
-            MIN'S DATABASE PRO &nbsp;&middot;&nbsp; Rev 2.4.1 &nbsp;&middot;&nbsp; Apr 2026
+            MIN'S DATABASE PRO &nbsp;&middot;&nbsp; Rev 2.5.0 &nbsp;&middot;&nbsp; Apr 2026
         </div>
     </main>
 
@@ -1987,10 +1987,11 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         if ((mode === 'parts' || mode === 'pan' || mode === 'inv601') && !filterValue) {
             addBtn.style.display = 'flex';
             addBtn.innerHTML = '<i class="ph-bold ph-plus"></i> Add';
+            addBtn.onclick = handleAddNew;
         } else if (diagModes.includes(mode)) {
             addBtn.style.display = 'flex';
-            addBtn.innerHTML = '<i class="ph-bold ph-file-pdf"></i> Docs';
-            addBtn.onclick = function(){ window._currentDiagMode = mode; document.getElementById('diagPdfInput').click(); };
+            addBtn.innerHTML = '<i class="ph-bold ph-folder-plus"></i> Folder';
+            addBtn.onclick = function(){ createDiagFolder(mode); };
         } else {
             addBtn.style.display = 'none';
             addBtn.onclick = handleAddNew;
@@ -2029,26 +2030,10 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
     function renderLocalList(list, mode, showFoldersIfAvailable = false) {
         const content = document.getElementById('secContent');
         content.innerHTML = "";
-        // ── Render PDF docs section for diagnostic modes ──
-        const diagModes = ['bht','gen5','tangent','ken','bandeli','platypus','hippopotamus','pan_alarms'];
-        if (diagModes.includes(mode)) {
-            const pdfs = getDiagPdfs(mode);
-            if (pdfs.length > 0) {
-                const sec = document.createElement('div');
-                sec.style.cssText = 'background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:14px;padding:12px 14px;margin-bottom:4px;';
-                sec.innerHTML = `<div style="font-size:0.68rem;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;display:flex;align-items:center;gap:5px;"><i class="ph-fill ph-file-pdf" style="color:#ef4444;"></i> Documents (${pdfs.length})</div>` +
-                    pdfs.map((pdf, i) => `
-                        <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f1f5f9;cursor:pointer;" onclick="viewDiagPdf('${mode}',${i})">
-                            <i class="ph-fill ph-file-pdf" style="font-size:1.4rem;color:#ef4444;flex-shrink:0;"></i>
-                            <div style="flex:1;min-width:0;">
-                                <div style="font-weight:700;font-size:0.85rem;color:#1e293b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${pdf.name}</div>
-                                <div style="font-size:0.7rem;color:#94a3b8;margin-top:2px;">${(pdf.size/1024).toFixed(0)} KB &nbsp;&middot;&nbsp; ${pdf.date}</div>
-                            </div>
-                            <button onclick="event.stopPropagation();deleteDiagPdf('${mode}',${i})" style="background:none;border:none;color:#cbd5e1;cursor:pointer;padding:4px;font-size:1rem;"><i class="ph-bold ph-trash"></i></button>
-                        </div>
-                    `).join('');
-                content.appendChild(sec);
-            }
+        // ── Diagnostic subfolder tiles ──
+        if (['bht','gen5','tangent','ken','bandeli','platypus','hippopotamus','pan_alarms'].includes(mode)) {
+            // tiles rendered after list is built (needs the DOM element to exist)
+            setTimeout(function(){ renderDiagFolderTiles(mode); }, 0);
         }
         
         if(!list || list.length === 0) {
@@ -3694,78 +3679,284 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
     const _origHandleAction = window.handleActionSheet;
 
 
-    // ── Diagnostic Folder PDF Storage ──────────────────────────────
-    window._currentDiagMode = null;
+    
+    // ══════════════════════════════════════════════════════════════
+    // DIAGNOSTIC SUBFOLDER SYSTEM (IndexedDB for PDFs, localStorage for metadata)
+    // ══════════════════════════════════════════════════════════════
+    const DIAG_MODES = ['bht','gen5','tangent','ken','bandeli','platypus','hippopotamus','pan_alarms'];
+    let _diagIDB = null;
 
-    function getDiagPdfs(mode) {
-        try { return JSON.parse(localStorage.getItem('mins_diag_pdfs_' + mode)) || []; } catch(e) { return []; }
+    function openDiagIDB(cb) {
+        if (_diagIDB) { cb(_diagIDB); return; }
+        const req = indexedDB.open('mins_diag_idb', 1);
+        req.onupgradeneeded = function(e) {
+            const db = e.target.result;
+            if (!db.objectStoreNames.contains('pdfs')) {
+                const store = db.createObjectStore('pdfs', { keyPath: 'id' });
+                store.createIndex('by_folder', 'folderId', { unique: false });
+            }
+        };
+        req.onsuccess = function(e) { _diagIDB = e.target.result; cb(_diagIDB); };
+        req.onerror   = function()  { alert('IndexedDB unavailable.'); };
     }
-    function saveDiagPdfs(mode, pdfs) {
-        try {
-            localStorage.setItem('mins_diag_pdfs_' + mode, JSON.stringify(pdfs));
-        } catch(e) {
-            alert('Storage full. Try deleting some PDFs first or use smaller files.');
+
+    // ── Folder metadata (localStorage) ─────────────────────────────
+    function getDiagFolders(mode) {
+        try { return JSON.parse(localStorage.getItem('mins_dfol_' + mode)) || []; } catch(e) { return []; }
+    }
+    function saveDiagFolders(mode, folders) {
+        try { localStorage.setItem('mins_dfol_' + mode, JSON.stringify(folders)); } catch(e) {}
+    }
+    function genDiagFolderID() { return 'df_' + Date.now() + '_' + Math.random().toString(36).slice(2,7); }
+
+    // ── Notes (localStorage) ───────────────────────────────────────
+    function getDiagNotes(folderId) {
+        try { return localStorage.getItem('mins_dnotes_' + folderId) || ''; } catch(e) { return ''; }
+    }
+    function saveDiagNotes(folderId, text) {
+        try { localStorage.setItem('mins_dnotes_' + folderId, text); } catch(e) {}
+    }
+
+    // ── Create / Rename / Delete folder ───────────────────────────
+    function createDiagFolder(mode) {
+        const name = prompt('Folder name:');
+        if (!name || !name.trim()) return;
+        const folders = getDiagFolders(mode);
+        folders.push({ id: genDiagFolderID(), name: name.trim(), created: new Date().toLocaleDateString('en-AU') });
+        saveDiagFolders(mode, folders);
+        renderDiagFolderTiles(mode);
+    }
+    function renameDiagFolder(mode, folderId) {
+        const folders = getDiagFolders(mode);
+        const f = folders.find(x => x.id === folderId);
+        if (!f) return;
+        const name = prompt('New name:', f.name);
+        if (!name || !name.trim()) return;
+        f.name = name.trim();
+        saveDiagFolders(mode, folders);
+        renderDiagFolderTiles(mode);
+    }
+    function deleteDiagFolder(mode, folderId) {
+        const folders = getDiagFolders(mode);
+        const f = folders.find(x => x.id === folderId);
+        if (!f) return;
+        if (!confirm('Delete folder "' + f.name + '" and ALL its PDFs and notes?')) return;
+        // Delete all PDFs in IndexedDB
+        openDiagIDB(function(db) {
+            const tx = db.transaction('pdfs','readwrite');
+            const idx = tx.objectStore('pdfs').index('by_folder');
+            idx.openCursor(IDBKeyRange.only(folderId)).onsuccess = function(e) {
+                const c = e.target.result;
+                if (c) { c.delete(); c.continue(); }
+            };
+        });
+        // Delete notes
+        localStorage.removeItem('mins_dnotes_' + folderId);
+        // Delete folder from list
+        saveDiagFolders(mode, folders.filter(x => x.id !== folderId));
+        renderDiagFolderTiles(mode);
+    }
+
+    // ── Render subfolder tiles into the top of secContent ─────────
+    function renderDiagFolderTiles(mode) {
+        const existing = document.getElementById('diagTilesSection');
+        if (existing) existing.remove();
+        const folders = getDiagFolders(mode);
+        const sec = document.createElement('div');
+        sec.id = 'diagTilesSection';
+        sec.style.cssText = 'margin-bottom:8px;';
+
+        const hdr = `
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                <div style="font-size:0.68rem;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:1px;display:flex;align-items:center;gap:5px;">
+                    <i class="ph-fill ph-folders" style="color:#6366f1;"></i> Subfolders (${folders.length})
+                </div>
+            </div>`;
+
+        if (folders.length === 0) {
+            sec.innerHTML = hdr + `<div style="text-align:center;padding:16px;color:#94a3b8;font-size:0.85rem;background:#f8fafc;border:1.5px dashed #e2e8f0;border-radius:14px;">
+                <i class="ph-fill ph-folder-plus" style="font-size:2rem;display:block;margin-bottom:6px;color:#cbd5e1;"></i>
+                Tap <strong>Folder</strong> in the header to create your first subfolder
+            </div>`;
+        } else {
+            const tiles = folders.map(f => `
+                <div style="background:linear-gradient(135deg,#4f46e5,#7c3aed);border-radius:14px;padding:14px;margin-bottom:10px;cursor:pointer;color:white;position:relative;"
+                     onclick="openDiagSubfolder('${mode}','${f.id}')">
+                    <i class="ph-fill ph-folder-open" style="font-size:1.6rem;margin-bottom:6px;display:block;opacity:0.9;"></i>
+                    <div style="font-weight:800;font-size:0.95rem;font-family:'Outfit',sans-serif;">${f.name}</div>
+                    <div style="font-size:0.68rem;opacity:0.7;margin-top:3px;">${f.created}</div>
+                    <div style="position:absolute;top:10px;right:10px;display:flex;gap:6px;">
+                        <button onclick="event.stopPropagation();renameDiagFolder('${mode}','${f.id}')"
+                            style="background:rgba(255,255,255,0.2);border:none;border-radius:8px;padding:5px 7px;color:white;cursor:pointer;font-size:0.75rem;">
+                            <i class="ph-bold ph-pencil-simple"></i>
+                        </button>
+                        <button onclick="event.stopPropagation();deleteDiagFolder('${mode}','${f.id}')"
+                            style="background:rgba(239,68,68,0.4);border:none;border-radius:8px;padding:5px 7px;color:white;cursor:pointer;font-size:0.75rem;">
+                            <i class="ph-bold ph-trash"></i>
+                        </button>
+                    </div>
+                </div>`).join('');
+            sec.innerHTML = hdr + tiles;
         }
+
+        const secContent = document.getElementById('secContent');
+        secContent.insertBefore(sec, secContent.firstChild);
     }
 
-    function processDiagPdfs(event) {
-        const mode = window._currentDiagMode;
-        if (!mode) return;
-        const files = Array.from(event.target.files);
-        if (!files.length) return;
-        const pdfs = getDiagPdfs(mode);
-        let processed = 0;
+    // ── Open a subfolder (navigate into it) ───────────────────────
+    window._diagSubState = null;
 
-        files.forEach(function(file) {
-            if (file.type !== 'application/pdf') {
-                alert(file.name + ' is not a PDF — skipped.');
-                return;
-            }
-            if (file.size > 3 * 1024 * 1024) {
-                alert(file.name + ' is over 3MB and may not save. Proceeding anyway...');
-            }
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                pdfs.push({
-                    name: file.name,
-                    dataUrl: e.target.result,
-                    size: file.size,
-                    date: new Date().toLocaleDateString('en-AU', {day:'2-digit',month:'short',year:'numeric'})
-                });
-                processed++;
-                if (processed === files.length) {
-                    saveDiagPdfs(mode, pdfs);
-                    // Refresh the current view
-                    if (activeMode === mode) openMode(mode);
+    function openDiagSubfolder(mode, folderId) {
+        const _fol = getDiagFolders(mode).find(function(x){ return x.id === folderId; });
+        const folderName = _fol ? _fol.name : folderId;
+        window._diagSubState = { mode, folderId, folderName };
+        document.getElementById('secTitle').innerText = folderName;
+        document.getElementById('addNewBtn').style.display = 'flex';
+        document.getElementById('addNewBtn').innerHTML = '<i class="ph-bold ph-file-pdf"></i> PDF';
+        document.getElementById('addNewBtn').onclick = function() {
+            window._diagPdfUploadTarget = { mode, folderId };
+            document.getElementById('diagPdfInput').value = '';
+            document.getElementById('diagPdfInput').click();
+        };
+        const backBtn = document.querySelector('.back-btn');
+        backBtn.innerHTML = `<i class="ph-bold ph-arrow-left"></i> ${modeLabels[mode] || mode}`;
+        backBtn.onclick = function() {
+            window._diagSubState = null;
+            backBtn.innerHTML = `<i class="ph-bold ph-arrow-left"></i> Home`;
+            backBtn.onclick = closeSecondary;
+            openMode(mode);
+        };
+        document.getElementById('localSearchWrapper').style.display = 'none';
+        renderDiagSubfolderContent(mode, folderId);
+    }
+
+    function renderDiagSubfolderContent(mode, folderId) {
+        const sc = document.getElementById('secContent');
+        sc.innerHTML = '';
+        sc.style.padding = '16px';
+
+        // ── Notes ──
+        const notes = getDiagNotes(folderId);
+        const noteEl = document.createElement('div');
+        noteEl.style.cssText = 'margin-bottom:16px;';
+        noteEl.innerHTML = `
+            <div style="font-size:0.68rem;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;display:flex;align-items:center;gap:5px;">
+                <i class="ph-fill ph-note-pencil" style="color:#f59e0b;"></i> Notes
+            </div>
+            <textarea id="diagNoteArea" placeholder="Type your notes here…"
+                style="width:100%;min-height:120px;border:1.5px solid #e2e8f0;border-radius:12px;padding:12px 14px;font-size:0.9rem;font-family:'Inter',sans-serif;resize:vertical;box-sizing:border-box;outline:none;line-height:1.5;color:#1e293b;background:white;"
+                onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='#e2e8f0'"
+            >${notes}</textarea>
+            <button onclick="saveDiagNotes('${folderId}',document.getElementById('diagNoteArea').value); this.textContent='Saved ✓'; setTimeout(()=>{this.textContent='Save Notes';},2000);"
+                style="margin-top:8px;background:#6366f1;color:white;border:none;border-radius:10px;padding:10px 20px;font-weight:800;font-size:0.85rem;cursor:pointer;font-family:'Inter',sans-serif;">
+                Save Notes
+            </button>`;
+        sc.appendChild(noteEl);
+
+        // ── PDFs ──
+        const pdfHdr = document.createElement('div');
+        pdfHdr.style.cssText = 'font-size:0.68rem;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;display:flex;align-items:center;gap:5px;';
+        pdfHdr.innerHTML = '<i class="ph-fill ph-file-pdf" style="color:#ef4444;"></i> <span id="diagPdfHdrLbl">Documents (loading…)</span>';
+        sc.appendChild(pdfHdr);
+
+        const pdfList = document.createElement('div');
+        pdfList.id = 'diagPdfList';
+        sc.appendChild(pdfList);
+
+        loadDiagFolderPdfs(mode, folderId);
+        document.getElementById('secondaryView').scrollTop = 0;
+    }
+
+    function loadDiagFolderPdfs(mode, folderId) {
+        openDiagIDB(function(db) {
+            const results = [];
+            const tx = db.transaction('pdfs','readonly');
+            const idx = tx.objectStore('pdfs').index('by_folder');
+            idx.openCursor(IDBKeyRange.only(folderId)).onsuccess = function(e) {
+                const c = e.target.result;
+                if (c) { results.push(c.value); c.continue(); }
+            };
+            tx.oncomplete = function() {
+                const lbl = document.getElementById('diagPdfHdrLbl');
+                if (lbl) lbl.textContent = 'Documents (' + results.length + ')';
+                const list = document.getElementById('diagPdfList');
+                if (!list) return;
+                if (results.length === 0) {
+                    list.innerHTML = `<div style="text-align:center;padding:20px;color:#94a3b8;font-size:0.85rem;background:#f8fafc;border:1.5px dashed #e2e8f0;border-radius:12px;">
+                        <i class="ph-fill ph-file-pdf" style="font-size:2rem;display:block;margin-bottom:6px;color:#fca5a5;"></i>
+                        Tap <strong>PDF</strong> in the header to upload files
+                    </div>`;
+                } else {
+                    list.innerHTML = results.map(pdf => `
+                        <div style="display:flex;align-items:center;gap:12px;padding:13px 14px;background:white;border:1.5px solid #e2e8f0;border-radius:12px;margin-bottom:8px;cursor:pointer;"
+                             onclick="viewDiagPdfIDB('${pdf.id}')">
+                            <i class="ph-fill ph-file-pdf" style="font-size:1.8rem;color:#ef4444;flex-shrink:0;"></i>
+                            <div style="flex:1;min-width:0;">
+                                <div style="font-weight:700;font-size:0.9rem;color:#1e293b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${pdf.name}</div>
+                                <div style="font-size:0.7rem;color:#94a3b8;margin-top:3px;">${(pdf.size/1024).toFixed(0)} KB &nbsp;·&nbsp; ${pdf.date}</div>
+                            </div>
+                            <button onclick="event.stopPropagation();deleteDiagPdfIDB('${pdf.id}','${mode}','${folderId}')"
+                                style="background:#fef2f2;border:1px solid #fecaca;border-radius:9px;padding:7px 9px;color:#ef4444;cursor:pointer;font-size:0.85rem;flex-shrink:0;">
+                                <i class="ph-bold ph-trash"></i>
+                            </button>
+                        </div>`).join('');
                 }
             };
-            reader.readAsDataURL(file);
         });
+    }
 
-        // Reset input so the same file can be re-selected
+    // ── PDF Upload via IndexedDB ──────────────────────────────────
+    window._diagPdfUploadTarget = null;
+
+    function processDiagPdfs(event) {
+        const target = window._diagPdfUploadTarget;
+        if (!target) return;
+        const files = Array.from(event.target.files);
+        if (!files.length) return;
+        let done = 0;
+        openDiagIDB(function(db) {
+            files.forEach(function(file) {
+                const id = target.folderId + '_' + Date.now() + '_' + Math.random().toString(36).slice(2,5);
+                const rec = {
+                    id: id,
+                    mode: target.mode,
+                    folderId: target.folderId,
+                    name: file.name,
+                    size: file.size,
+                    date: new Date().toLocaleDateString('en-AU', {day:'2-digit',month:'short',year:'numeric'}),
+                    blob: file
+                };
+                const tx = db.transaction('pdfs','readwrite');
+                tx.objectStore('pdfs').put(rec);
+                tx.oncomplete = function() {
+                    done++;
+                    if (done === files.length) {
+                        loadDiagFolderPdfs(target.mode, target.folderId);
+                    }
+                };
+            });
+        });
         event.target.value = '';
     }
 
-    function viewDiagPdf(mode, index) {
-        const pdfs = getDiagPdfs(mode);
-        const pdf = pdfs[index];
-        if (!pdf) return;
-        // Convert base64 dataUrl to blob and open in new tab
-        const byteStr = atob(pdf.dataUrl.split(',')[1]);
-        const ab = new ArrayBuffer(byteStr.length);
-        const ia = new Uint8Array(ab);
-        for (let i = 0; i < byteStr.length; i++) ia[i] = byteStr.charCodeAt(i);
-        const blob = new Blob([ab], {type: 'application/pdf'});
-        const url = URL.createObjectURL(blob);
-        window.open(url, '_blank');
+    function viewDiagPdfIDB(pdfId) {
+        openDiagIDB(function(db) {
+            db.transaction('pdfs','readonly').objectStore('pdfs').get(pdfId).onsuccess = function(e) {
+                const pdf = e.target.result;
+                if (!pdf || !pdf.blob) { alert('PDF not found.'); return; }
+                const url = URL.createObjectURL(pdf.blob);
+                window.open(url, '_blank');
+                setTimeout(function() { URL.revokeObjectURL(url); }, 60000);
+            };
+        });
     }
 
-    function deleteDiagPdf(mode, index) {
-        const pdfs = getDiagPdfs(mode);
-        if (!confirm('Delete "' + pdfs[index].name + '"?')) return;
-        pdfs.splice(index, 1);
-        saveDiagPdfs(mode, pdfs);
-        if (activeMode === mode) openMode(mode);
+    function deleteDiagPdfIDB(pdfId, mode, folderId) {
+        openDiagIDB(function(db) {
+            const tx = db.transaction('pdfs','readwrite');
+            tx.objectStore('pdfs').delete(pdfId);
+            tx.oncomplete = function() { loadDiagFolderPdfs(mode, folderId); };
+        });
     }
 
         // ── Long-press (3 sec hold) logic ────────────────────────────────
