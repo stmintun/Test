@@ -160,7 +160,7 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         .view-title { margin: 0; font-family: 'Outfit', sans-serif; font-size: 1.15rem; font-weight: 800; color: var(--dark); text-transform: uppercase; letter-spacing: 0.5px;}
         .sec-container { padding: 16px; width: 100%; display: flex; flex-direction: column; gap: 12px; box-sizing: border-box; }
 
-        .local-search-container { position: sticky; top: 60px; background: rgba(248, 250, 252, 0.95); backdrop-filter: blur(12px); padding: 10px 20px 15px 20px; z-index: 105; border-bottom: 1px solid rgba(0,0,0,0.05); margin-top: -10px; margin-bottom: 5px; }
+        .local-search-container { background: transparent; padding: 0 0 4px 0; z-index: 105; margin-top: 10px; position: relative; }
         .local-search-input { width: 100%; padding: 12px 15px 12px 40px; border-radius: var(--radius-sm); border: 1px solid #cbd5e1; background: white; font-size: 0.95rem; font-family: 'Inter', sans-serif; font-weight: 500; outline: none; transition: var(--transition); }
         .local-search-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15); }
         .local-search-icon { position: absolute; left: 32px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 1.1rem; }
@@ -330,9 +330,10 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
 
         <div class="dashboard-container">
             <div class="main-search-container" style="padding: 0; margin: 0 0 20px 0;">
-                <div class="search-wrapper">
+                <div class="search-wrapper" style="position:relative;">
                     <i class="ph ph-magnifying-glass search-icon"></i>
-                    <input type="text" id="mainSearch" class="main-search-input" placeholder="Search 516 items (S/N, Parts...)" oninput="handleGlobalSearch()">
+                    <input type="text" id="mainSearch" class="main-search-input" placeholder="Search parts, errors, S/N..." oninput="handleGlobalSearch()">
+                    <button id="mainSearchClear" onclick="clearMainSearch()" style="display:none;position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:#94a3b8;font-size:1.1rem;cursor:pointer;padding:0;line-height:1;"><i class="ph-bold ph-x-circle"></i></button>
                 </div>
             </div>
             <h2 class="section-title"><span><i class="ph-fill ph-map-trifold"></i> Location</span></h2>
@@ -344,13 +345,18 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
                 </div>
                 <div class="menu-card card-primary" onclick="openMode('parts')">
                     <div class="card-icon-wrap"><i class="ph-fill ph-package"></i></div>
-                    <h3>All Parts</h3><p>Inventory Details</p>
+                    <h3>602 Inventory</h3><p>Van Inventory</p>
                     <div class="count-badge" id="b-parts">0</div>
                 </div>
-                <div class="menu-card card-success" onclick="openMode('pan')" style="grid-column: span 2;">
+                <div class="menu-card card-success" onclick="openMode('pan')">
                     <div class="card-icon-wrap"><i class="ph-fill ph-map-pin"></i></div>
                     <h3>Pan Locations</h3><p>Hospital Deployment</p>
                     <div class="count-badge" id="b-pan">0</div>
+                </div>
+                <div class="menu-card card-indigo" onclick="openMode('inv601')">
+                    <div class="card-icon-wrap"><i class="ph-fill ph-warehouse"></i></div>
+                    <h3>601 Inventory</h3><p>Location Inventory</p>
+                    <div class="count-badge" id="b-inv601">0</div>
                 </div>
             </div>
 
@@ -454,14 +460,17 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
 
     <!-- Secondary View Container -->
     <div id="secondaryView" class="view-layer">
-        <div class="view-header">
-            <button class="back-btn" onclick="closeSecondary()"><i class="ph-bold ph-arrow-left"></i> Home</button>
-            <h2 id="secTitle" class="view-title">Results</h2>
-            <button id="addNewBtn" style="display:none; background:var(--primary); color:white; border:none; border-radius:30px; padding:8px 16px; font-weight:800; font-size:0.85rem; cursor:pointer; font-family:'Inter',sans-serif; display:none; align-items:center; gap:5px;" onclick="handleAddNew()"><i class="ph-bold ph-plus"></i> Add</button>
-        </div>
-        <div id="localSearchWrapper" class="local-search-container" style="display:none;">
-            <i class="ph ph-magnifying-glass local-search-icon"></i>
-            <input type="text" id="localSearch" class="local-search-input" placeholder="Search this section..." oninput="handleLocalSearch()">
+        <div class="view-header" style="flex-direction:column; align-items:stretch; gap:0;">
+            <div style="display:flex; align-items:center; justify-content:space-between; width:100%;">
+                <button class="back-btn" onclick="closeSecondary()"><i class="ph-bold ph-arrow-left"></i> Home</button>
+                <h2 id="secTitle" class="view-title">Results</h2>
+                <button id="addNewBtn" style="display:none; background:var(--primary); color:white; border:none; border-radius:30px; padding:8px 16px; font-weight:800; font-size:0.85rem; cursor:pointer; font-family:'Inter',sans-serif; align-items:center; gap:5px;" onclick="handleAddNew()"><i class="ph-bold ph-plus"></i> Add</button>
+            </div>
+            <div id="localSearchWrapper" class="local-search-container" style="display:none; position:relative; width:100%;">
+                <i class="ph ph-magnifying-glass local-search-icon" style="left:12px;"></i>
+                <input type="text" id="localSearch" class="local-search-input" placeholder="Search this section..." oninput="handleLocalSearch()">
+                <button id="localSearchClear" onclick="clearLocalSearch()" style="display:none;position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:#94a3b8;font-size:1.1rem;cursor:pointer;padding:0;line-height:1;"><i class="ph-bold ph-x-circle"></i></button>
+            </div>
         </div>
         <div id="secContent" class="sec-container"></div>
     </div>
@@ -506,6 +515,1369 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
     // Custom parts stored separately so they persist across sessions
     let customParts = [];
     try { customParts = JSON.parse(localStorage.getItem('mins_custom_parts')) || []; } catch(e) {}
+    // ── 602 Inventory (602) base dataset ─────────────────────────────
+    window._inv602Base = [
+    {
+        "PartID": "010057",
+        "Description": "Nipple Brass Hex 1/2 BSP",
+        "Location": "602-022",
+        "Stock": 1
+    },
+    {
+        "PartID": "010231",
+        "Description": "Strainer Chamber Sterilizer",
+        "Location": "602-016",
+        "Stock": 2
+    },
+    {
+        "PartID": "010240",
+        "Description": "Nipple Brass Hex 3/4",
+        "Location": "602-022",
+        "Stock": 1
+    },
+    {
+        "PartID": "011390",
+        "Description": "Bush Reducing Brass 1/2X 3/8",
+        "Location": "602-022",
+        "Stock": 3
+    },
+    {
+        "PartID": "011915",
+        "Description": "Gasket Steam Generator 305 Dia SG30-75",
+        "Location": "602-024",
+        "Stock": 1
+    },
+    {
+        "PartID": "014163",
+        "Description": "Element Panwasher 005 Model",
+        "Location": "602-012",
+        "Stock": 1
+    },
+    {
+        "PartID": "020835",
+        "Description": "Wheel Carriage Recess 65mm",
+        "Location": "602-017",
+        "Stock": 4
+    },
+    {
+        "PartID": "022033",
+        "Description": "Seal Thermocouple Gland Fitting",
+        "Location": "602-060",
+        "Stock": 20
+    },
+    {
+        "PartID": "022249",
+        "Description": "Gauge Compound Tangent ABS Panel",
+        "Location": "602-008",
+        "Stock": 1
+    },
+    {
+        "PartID": "022434",
+        "Description": "Gasket Steam Generator T4",
+        "Location": "602-029",
+        "Stock": 2
+    },
+    {
+        "PartID": "022468",
+        "Description": "Reducer 8Msl X 1/2Tube 8 Bore",
+        "Location": "602-022",
+        "Stock": 3
+    },
+    {
+        "PartID": "022533",
+        "Description": "Gasket Steam Generator T5 T6 & T9",
+        "Location": "602-029",
+        "Stock": 5
+    },
+    {
+        "PartID": "022966",
+        "Description": "Cable Leading Edge T9 Series",
+        "Location": "602-018",
+        "Stock": 1
+    },
+    {
+        "PartID": "024458",
+        "Description": "Wheel Carriage Lassie",
+        "Location": "602-017",
+        "Stock": 4
+    },
+    {
+        "PartID": "025094",
+        "Description": "PCB Button Board Lh L5 L6 L9 At1012L",
+        "Location": "602-006",
+        "Stock": 2
+    },
+    {
+        "PartID": "025095",
+        "Description": "PCB Button Board Rh L5 L6 L9 At1012R",
+        "Location": "602-006",
+        "Stock": 2
+    },
+    {
+        "PartID": "025096",
+        "Description": "PCB Button Board Spacer L5 L6 L9",
+        "Location": "602-006",
+        "Stock": 5
+    },
+    {
+        "PartID": "025097",
+        "Description": "Label Button Board Lh L5 L6 L9",
+        "Location": "602-006",
+        "Stock": 2
+    },
+    {
+        "PartID": "025098",
+        "Description": "Label Button Board Rh L5 L6 L9",
+        "Location": "602-006",
+        "Stock": 7
+    },
+    {
+        "PartID": "025260",
+        "Description": "Label Button Board Rh No Laser",
+        "Location": "602-006",
+        "Stock": 2
+    },
+    {
+        "PartID": "025840",
+        "Description": "Washer Expanded Neoprene Sponge 14 OD x 3.5 ID",
+        "Location": "602-006",
+        "Stock": 4
+    },
+    {
+        "PartID": "025912",
+        "Description": "Kit Retrofit Brass Upgrade P/W",
+        "Location": "602-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "026271",
+        "Description": "Gasket Steam Generator Gen 5",
+        "Location": "602-060",
+        "Stock": 3
+    },
+    {
+        "PartID": "027469",
+        "Description": "Kit Retrofit Water Level Sensor Gen 5 66",
+        "Location": "602-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "130053",
+        "Description": "Switch Micro SPDT 15A240V W Drip Cover",
+        "Location": "602-003",
+        "Stock": 7
+    },
+    {
+        "PartID": "130131",
+        "Description": "Connector Bp1",
+        "Location": "602-026",
+        "Stock": 11
+    },
+    {
+        "PartID": "130609",
+        "Description": "Union Brass 3/4 M X 1 C",
+        "Location": "602-022",
+        "Stock": 1
+    },
+    {
+        "PartID": "130611",
+        "Description": "Union Brass 3/4 F X 3/4 C",
+        "Location": "602-022",
+        "Stock": 1
+    },
+    {
+        "PartID": "130613",
+        "Description": "Union Brass 3/4 M X 3/4 C",
+        "Location": "602-022",
+        "Stock": 1
+    },
+    {
+        "PartID": "130617",
+        "Description": "Union Brass 1/2 M X 3/4 C",
+        "Location": "602-022",
+        "Stock": 4
+    },
+    {
+        "PartID": "130619",
+        "Description": "Union Brass 1/2 F X 1/2 C",
+        "Location": "602-022",
+        "Stock": 2
+    },
+    {
+        "PartID": "130621",
+        "Description": "Union Brass 1/2 M X 1/2 C",
+        "Location": "602-022",
+        "Stock": 4
+    },
+    {
+        "PartID": "130639",
+        "Description": "Elbow Brass 1 M X 1 C",
+        "Location": "602-022",
+        "Stock": 1
+    },
+    {
+        "PartID": "130651",
+        "Description": "Elbow Brass 1/2 M X 3/4 C",
+        "Location": "602-022",
+        "Stock": 1
+    },
+    {
+        "PartID": "130655",
+        "Description": "Elbow Brass 1/2 M X 1/2 C",
+        "Location": "602-022",
+        "Stock": 2
+    },
+    {
+        "PartID": "130656",
+        "Description": "Elbow Brass 1/2 F X 1/2 C",
+        "Location": "602-022",
+        "Stock": 3
+    },
+    {
+        "PartID": "130671",
+        "Description": "Nipple Brass Reducing 1/2 X 3/8",
+        "Location": "602-022",
+        "Stock": 2
+    },
+    {
+        "PartID": "130686",
+        "Description": "Socket Brass Hex 3/4 BSP",
+        "Location": "602-022",
+        "Stock": 1
+    },
+    {
+        "PartID": "130716",
+        "Description": "Tee Brass 3/4 Fi",
+        "Location": "602-022",
+        "Stock": 1
+    },
+    {
+        "PartID": "130793",
+        "Description": "Bush Reducing Brass 3/8 X 1/8",
+        "Location": "602-022",
+        "Stock": 3
+    },
+    {
+        "PartID": "130930",
+        "Description": "Tee Brass 1/4 C X 1/4 C X 1/4 C Petrol",
+        "Location": "602-022",
+        "Stock": 1
+    },
+    {
+        "PartID": "131123",
+        "Description": "Strainer Steam 1/2 S/S Y Type",
+        "Location": "602-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "131282",
+        "Description": "Anode Magnesium S/G",
+        "Location": "602-016",
+        "Stock": 2
+    },
+    {
+        "PartID": "131615",
+        "Description": "Gauge Compound 80mm Dia 100-0-500",
+        "Location": "602-008",
+        "Stock": 1
+    },
+    {
+        "PartID": "131775",
+        "Description": "Valve Solenoid Steam 3/8",
+        "Location": "602-020",
+        "Stock": 2
+    },
+    {
+        "PartID": "131980",
+        "Description": "Gasket Door Manual Blue N.393-Se1057",
+        "Location": "602-024",
+        "Stock": 6
+    },
+    {
+        "PartID": "132016",
+        "Description": "Switch Micro Burgess Crimr Long",
+        "Location": "602-003",
+        "Stock": 4
+    },
+    {
+        "PartID": "132168",
+        "Description": "Valve Solenoid Steam 3/4 - individually boxed",
+        "Location": "602-019",
+        "Stock": 3
+    },
+    {
+        "PartID": "132175",
+        "Description": "Filter Air Domnick Hunter Zgpb.01V",
+        "Location": "602-016",
+        "Stock": 2
+    },
+    {
+        "PartID": "132202",
+        "Description": "Relay 2 Contact 240 Volt 2-13R",
+        "Location": "602-003",
+        "Stock": 2
+    },
+    {
+        "PartID": "132217",
+        "Description": "Base Relay 2-13R 2C",
+        "Location": "602-003",
+        "Stock": 2
+    },
+    {
+        "PartID": "132220",
+        "Description": "Fuse Holder Type Fc32Fw",
+        "Location": "602-015",
+        "Stock": 2
+    },
+    {
+        "PartID": "132222",
+        "Description": "Fuse 10 Amp Hrc Cartridge",
+        "Location": "602-015",
+        "Stock": 5
+    },
+    {
+        "PartID": "133241",
+        "Description": "Valve Ball S/S 1/2 Suitable For Steam",
+        "Location": "602-028",
+        "Stock": 1
+    },
+    {
+        "PartID": "133242",
+        "Description": "Valve Ball 3/4 Suitable For Steam 2 piece",
+        "Location": "602-028",
+        "Stock": 1
+    },
+    {
+        "PartID": "133480",
+        "Description": "Switch Pressure Asco Hc20A224",
+        "Location": "602-027",
+        "Stock": 0
+    },
+    {
+        "PartID": "133482",
+        "Description": "Switch Pressure Auto Door",
+        "Location": "602-027",
+        "Stock": 1
+    },
+    {
+        "PartID": "133561",
+        "Description": "Bush Reducing Brass 1 X 3/4",
+        "Location": "602-022",
+        "Stock": 1
+    },
+    {
+        "PartID": "133628",
+        "Description": "Piston BR 1/2 Ball Float Valve",
+        "Location": "602-011",
+        "Stock": 1
+    },
+    {
+        "PartID": "134560",
+        "Description": "Cover M/Switch PVC",
+        "Location": "602-003",
+        "Stock": 8
+    },
+    {
+        "PartID": "134752",
+        "Description": "Thermocouple Tm Et 310K",
+        "Location": "602-025",
+        "Stock": 1
+    },
+    {
+        "PartID": "134849",
+        "Description": "Valve Float Watermark 1/2 with 4 PVC Cold Water Ball (Black)",
+        "Location": "602-011",
+        "Stock": 1
+    },
+    {
+        "PartID": "134877",
+        "Description": "Thermostat E.G.O. 30 - 120 deg C",
+        "Location": "602-001",
+        "Stock": 1
+    },
+    {
+        "PartID": "135005",
+        "Description": "Fan Compact Axial Controls",
+        "Location": "602-014",
+        "Stock": 1
+    },
+    {
+        "PartID": "135122",
+        "Description": "Actuator Zaq-2 Auxillary",
+        "Location": "602-003",
+        "Stock": 2
+    },
+    {
+        "PartID": "135766",
+        "Description": "Gasket For Mobrey Float Contro",
+        "Location": "602-029",
+        "Stock": 0
+    },
+    {
+        "PartID": "135907",
+        "Description": "Transducer Pressure Wika S/S",
+        "Location": "602-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "135935",
+        "Description": "Socket Contact Female 66101-2",
+        "Location": "602-026",
+        "Stock": 58
+    },
+    {
+        "PartID": "135936",
+        "Description": "Pin Contact Male 66099-2",
+        "Location": "602-026",
+        "Stock": 35
+    },
+    {
+        "PartID": "135947",
+        "Description": "Transmitter Rtd Type",
+        "Location": "602-004",
+        "Stock": 2
+    },
+    {
+        "PartID": "136072",
+        "Description": "Ribbon Cartridge Centenary Sterilizer Innova M4 M5 M5ISO Dragon",
+        "Location": "602-013",
+        "Stock": 2
+    },
+    {
+        "PartID": "136098",
+        "Description": "Nut Lock S/S 3/8 Bsw.",
+        "Location": "602-018",
+        "Stock": 4
+    },
+    {
+        "PartID": "137047",
+        "Description": "Valve Float 3/8 with 3 PVC Hot Water Ball (White)",
+        "Location": "602-011",
+        "Stock": 1
+    },
+    {
+        "PartID": "137435",
+        "Description": "Valve Pressure Control Brass 1",
+        "Location": "602-030",
+        "Stock": 1
+    },
+    {
+        "PartID": "137491",
+        "Description": "Valve Ball 1 S/S for Motorized Valve",
+        "Location": "602-009",
+        "Stock": 1
+    },
+    {
+        "PartID": "137661",
+        "Description": "Switch Micro Door Closed & Leading Edge",
+        "Location": "602-003",
+        "Stock": 1
+    },
+    {
+        "PartID": "137685",
+        "Description": "Sensor Photo-Elec P/W",
+        "Location": "602-002",
+        "Stock": 1
+    },
+    {
+        "PartID": "137707",
+        "Description": "Trap Air & Steam 15mm Brass",
+        "Location": "602-019",
+        "Stock": 2
+    },
+    {
+        "PartID": "137821",
+        "Description": "Thermocouple K Type Probe",
+        "Location": "602-004",
+        "Stock": 1
+    },
+    {
+        "PartID": "137822",
+        "Description": "Thermocouple K Ty Probe 3/8BSP",
+        "Location": "602-004",
+        "Stock": 2
+    },
+    {
+        "PartID": "137872",
+        "Description": "Switch Horizontal Float",
+        "Location": "602-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "137888",
+        "Description": "Sensor Proximity Door",
+        "Location": "602-003",
+        "Stock": 1
+    },
+    {
+        "PartID": "138001",
+        "Description": "Valve Pressure Control Brass 1/2",
+        "Location": "602-030",
+        "Stock": 1
+    },
+    {
+        "PartID": "138444",
+        "Description": "Valve Solenoid Steam 1/2 - individually boxed",
+        "Location": "602-010",
+        "Stock": 2
+    },
+    {
+        "PartID": "138449",
+        "Description": "Valve Solenoid 1/4 Water Tangent",
+        "Location": "602-010",
+        "Stock": 1
+    },
+    {
+        "PartID": "138454",
+        "Description": "Valve Solenoid 1/4 Steam Tangent",
+        "Location": "602-010",
+        "Stock": 1
+    },
+    {
+        "PartID": "138466",
+        "Description": "Valve Check 3/8 Steam Tangent (139981)",
+        "Location": "602-007",
+        "Stock": 16
+    },
+    {
+        "PartID": "138486",
+        "Description": "Tube Pfa 1/4 Dia",
+        "Location": "602-023",
+        "Stock": 2
+    },
+    {
+        "PartID": "138487",
+        "Description": "Tube Pfa 3/8 Dia",
+        "Location": "602-023",
+        "Stock": 0
+    },
+    {
+        "PartID": "138488",
+        "Description": "Tube Pfa 1/2 Dia",
+        "Location": "602-023",
+        "Stock": 1
+    },
+    {
+        "PartID": "138593",
+        "Description": "Rtd 80 X 6 S/S Tangent Drain & Jacket",
+        "Location": "602-004",
+        "Stock": 1
+    },
+    {
+        "PartID": "138674",
+        "Description": "Thermostat Tangent Generator 50-320 Deg",
+        "Location": "602-001",
+        "Stock": 1
+    },
+    {
+        "PartID": "138798",
+        "Description": "PLC Power Supply CJ1W-PA202",
+        "Location": "602-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "138820",
+        "Description": "Relay LY2N 240VAC DPDT 10A",
+        "Location": "602-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "138838",
+        "Description": "Union Brass 3/4 Sl X 3/4 M",
+        "Location": "602-022",
+        "Stock": 1
+    },
+    {
+        "PartID": "138853",
+        "Description": "Tee Brass 3/4 Sl",
+        "Location": "602-022",
+        "Stock": 1
+    },
+    {
+        "PartID": "138873",
+        "Description": "Valve Safety 1/2 Hero Tang 260",
+        "Location": "602-007",
+        "Stock": 1
+    },
+    {
+        "PartID": "138896",
+        "Description": "Filter Water Cartridge Softener Tangent",
+        "Location": "602-026",
+        "Stock": 3
+    },
+    {
+        "PartID": "138896",
+        "Description": "Filter Water Cartridge Softener Tangent",
+        "Location": "602-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "138927",
+        "Description": "Thermocouple Lead Chamber",
+        "Location": "602-025",
+        "Stock": 2
+    },
+    {
+        "PartID": "138929",
+        "Description": "Bolt Hex S/S M8 X 55mm Bumax 316 10.9",
+        "Location": "602-029",
+        "Stock": 16
+    },
+    {
+        "PartID": "138960",
+        "Description": "Fuse 8 Amp Door Driver Tangent/Cyber",
+        "Location": "602-001",
+        "Stock": 4
+    },
+    {
+        "PartID": "139030",
+        "Description": "Battery PLC CQ/CJ CPM2A-BAT01",
+        "Location": "602-060",
+        "Stock": 2
+    },
+    {
+        "PartID": "139083",
+        "Description": "Pump Steam Generator S/S",
+        "Location": "602-009",
+        "Stock": 0
+    },
+    {
+        "PartID": "139126",
+        "Description": "Filter Disposable Drying Cab",
+        "Location": "602-014",
+        "Stock": 5
+    },
+    {
+        "PartID": "139132",
+        "Description": "Power Supply 5Vdc 6A 30W",
+        "Location": "602-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "139135",
+        "Description": "Tee S/S Branch 1/4 Sl X 1/4 M",
+        "Location": "602-022",
+        "Stock": 1
+    },
+    {
+        "PartID": "139141",
+        "Description": "Union S/S 1/2 Sl X 1/4 M",
+        "Location": "602-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "139143",
+        "Description": "Connector Port S/S 1/2 X 1/2 Sl",
+        "Location": "602-060",
+        "Stock": 2
+    },
+    {
+        "PartID": "139145",
+        "Description": "Union S/S 3/4 Sl X 1/2 F",
+        "Location": "602-060",
+        "Stock": 2
+    },
+    {
+        "PartID": "139146",
+        "Description": "Tee S/S Running 1/2 Sl X 1/2 M",
+        "Location": "602-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "139150",
+        "Description": "Tee S/S 1/2 Sl",
+        "Location": "602-022",
+        "Stock": 1
+    },
+    {
+        "PartID": "139154",
+        "Description": "Elbow S/S 1/4 Sl X 1/4 M",
+        "Location": "602-022",
+        "Stock": 2
+    },
+    {
+        "PartID": "139158",
+        "Description": "Adapter S/S 1/2 Tube X 3/8 M",
+        "Location": "602-022",
+        "Stock": 1
+    },
+    {
+        "PartID": "139167",
+        "Description": "Plug S/S 3/8 Hex Head",
+        "Location": "602-022",
+        "Stock": 4
+    },
+    {
+        "PartID": "139171",
+        "Description": "Elbow S/S 3/4 Sl X 3/4 Sl",
+        "Location": "602-022",
+        "Stock": 4
+    },
+    {
+        "PartID": "139198",
+        "Description": "Fuse 2 Amp Glass 5 X 20",
+        "Location": "602-003",
+        "Stock": 5
+    },
+    {
+        "PartID": "139199",
+        "Description": "Fuse Holder 5 X 20 Din Rail",
+        "Location": "602-003",
+        "Stock": 3
+    },
+    {
+        "PartID": "139281",
+        "Description": "Filter Water Cartridge Tangent",
+        "Location": "602-026",
+        "Stock": 1
+    },
+    {
+        "PartID": "139297",
+        "Description": "Element P/W Duck",
+        "Location": "602-060",
+        "Stock": 0
+    },
+    {
+        "PartID": "139305",
+        "Description": "Plug Solenoid",
+        "Location": "602-019",
+        "Stock": 22
+    },
+    {
+        "PartID": "139378",
+        "Description": "Tee Brass Branch 16mm Hose X 1/2 BSP",
+        "Location": "602-060",
+        "Stock": 2
+    },
+    {
+        "PartID": "139394",
+        "Description": "PCB Drying Cabinet Triac",
+        "Location": "602-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "139396",
+        "Description": "Nut & Tail Brass 6mm Hose X 1/2 BSP",
+        "Location": "602-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "139398",
+        "Description": "Gasket Spray Nozzle Duck",
+        "Location": "602-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "139413",
+        "Description": "Gasket Element Panwasher Duck Series",
+        "Location": "602-011",
+        "Stock": 0
+    },
+    {
+        "PartID": "139455",
+        "Description": "Cable M12x4 A-Coded Sockets One End 2m",
+        "Location": "602-003",
+        "Stock": 4
+    },
+    {
+        "PartID": "139469",
+        "Description": "Valve Motorized 1 BSP S/S Ball 3-Way",
+        "Location": "602-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "139474",
+        "Description": "Solenoid Trolley Rail Lock",
+        "Location": "602-006",
+        "Stock": 2
+    },
+    {
+        "PartID": "139476",
+        "Description": "Switch Micro Short Roller Lever Lassie",
+        "Location": "602-006",
+        "Stock": 5
+    },
+    {
+        "PartID": "139610",
+        "Description": "Loctite Nickle Anti Seize LB 771 450G",
+        "Location": "602-001",
+        "Stock": 1
+    },
+    {
+        "PartID": "139678",
+        "Description": "Valve Directly Operated Solenoid - N.C.",
+        "Location": "602-027",
+        "Stock": 2
+    },
+    {
+        "PartID": "139681",
+        "Description": "Valve Pneumatic 1/2 S/S Steam NC",
+        "Location": "602-060",
+        "Stock": 2
+    },
+    {
+        "PartID": "139715",
+        "Description": "Valve Pneumatic 3/4 S/S Steam NC",
+        "Location": "602-022",
+        "Stock": 1
+    },
+    {
+        "PartID": "139733",
+        "Description": "Trap Air & Steam 15mm S/S",
+        "Location": "602-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "139756",
+        "Description": "Union S/S 1 Sl X 3/4 M",
+        "Location": "602-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "139759",
+        "Description": "Union S/S 1/2Sl X 3/8M",
+        "Location": "602-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "139775",
+        "Description": "Adapter S/S 1/4 Tube X 1/4 M",
+        "Location": "602-060",
+        "Stock": 2
+    },
+    {
+        "PartID": "139789",
+        "Description": "Nipple S/S Hex 1/2 Bsp",
+        "Location": "602-022",
+        "Stock": 1
+    },
+    {
+        "PartID": "139791",
+        "Description": "Nipple S/S Hex 3/4",
+        "Location": "602-022",
+        "Stock": 2
+    },
+    {
+        "PartID": "139833",
+        "Description": "Bolt Hex S/S M10 X 55mm Bumax 316 10.9",
+        "Location": "602-029",
+        "Stock": 8
+    },
+    {
+        "PartID": "139852",
+        "Description": "Bush Reducing S/S 3/4 F X 2 M",
+        "Location": "602-060",
+        "Stock": 4
+    },
+    {
+        "PartID": "139853",
+        "Description": "Union S/S 1/2 Sl X 3/4 M",
+        "Location": "602-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "139854",
+        "Description": "Tee S/S Running 3/4 M X 12mm Sl X 1/2 Sl",
+        "Location": "602-060",
+        "Stock": 2
+    },
+    {
+        "PartID": "139855",
+        "Description": "Adapter S/S 3/4 Tube X 1/2 F",
+        "Location": "602-022",
+        "Stock": 2
+    },
+    {
+        "PartID": "139874",
+        "Description": "Plug S/S 3/4 BSP Square Head",
+        "Location": "602-022",
+        "Stock": 4
+    },
+    {
+        "PartID": "139877",
+        "Description": "Rtd 190 X 6 S/S Pt100 1/2 BSP 7M",
+        "Location": "602-004",
+        "Stock": 4
+    },
+    {
+        "PartID": "139884",
+        "Description": "Plug S/S 1/4 Hylok",
+        "Location": "602-022",
+        "Stock": 4
+    },
+    {
+        "PartID": "139887",
+        "Description": "Plug S/S 1/2 BSP Square Head",
+        "Location": "602-022",
+        "Stock": 4
+    },
+    {
+        "PartID": "139946",
+        "Description": "Valve S/S Check 1/2 Tube",
+        "Location": "602-022",
+        "Stock": 0
+    },
+    {
+        "PartID": "139948",
+        "Description": "Valve Pneumatic 1 S/S Steam NC",
+        "Location": "602-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "139957",
+        "Description": "Spring Gasket Door 55 Jerboa/Mongoose",
+        "Location": "602-023",
+        "Stock": 2
+    },
+    {
+        "PartID": "139958",
+        "Description": "Spring Gasket Door 66 Chipmunk/Tiger",
+        "Location": "602-023",
+        "Stock": 4
+    },
+    {
+        "PartID": "139959",
+        "Description": "Spring Gasket Door 96 Chinchilla/Gorilla",
+        "Location": "602-023",
+        "Stock": 3
+    },
+    {
+        "PartID": "139960",
+        "Description": "Gasket Door Round 55 Jerboa/Mongoose",
+        "Location": "602-023",
+        "Stock": 2
+    },
+    {
+        "PartID": "139961",
+        "Description": "Gasket Door Round 66 Chipmunk/Tiger",
+        "Location": "602-023",
+        "Stock": 7
+    },
+    {
+        "PartID": "139962",
+        "Description": "Gasket Door Round 96 Chinchilla/Gorilla",
+        "Location": "602-023",
+        "Stock": 6
+    },
+    {
+        "PartID": "139976",
+        "Description": "Spring Gasket A/Door 900 Series-93",
+        "Location": "602-023",
+        "Stock": 2
+    },
+    {
+        "PartID": "139980",
+        "Description": "Gasket A/Door Round 900 Series-93",
+        "Location": "602-023",
+        "Stock": 1
+    },
+    {
+        "PartID": "140008",
+        "Description": "Pump Vacuum X66 Tiger And Chipmunk",
+        "Location": "602-060",
+        "Stock": 0
+    },
+    {
+        "PartID": "140009",
+        "Description": "Plug S/S 1/4 BSP Hex Head",
+        "Location": "602-022",
+        "Stock": 4
+    },
+    {
+        "PartID": "140012",
+        "Description": "Valve Pneumatic 1/2 S/S Steam NC Small",
+        "Location": "602-023",
+        "Stock": 1
+    },
+    {
+        "PartID": "140035",
+        "Description": "Elbow Swivel M5 X 4 Dia Rapid Fitting",
+        "Location": "602-027",
+        "Stock": 5
+    },
+    {
+        "PartID": "140053",
+        "Description": "Insert S/S 1/2 Tube",
+        "Location": "602-001",
+        "Stock": 4
+    },
+    {
+        "PartID": "140101",
+        "Description": "Validation Lead T-Type",
+        "Location": "602-060",
+        "Stock": 3
+    },
+    {
+        "PartID": "140102",
+        "Description": "Plug T-Type",
+        "Location": "602-060",
+        "Stock": 12
+    },
+    {
+        "PartID": "140109",
+        "Description": "Ball 4 PVC Cold Water (Black) for p/n 134849",
+        "Location": "602-011",
+        "Stock": 1
+    },
+    {
+        "PartID": "140157",
+        "Description": "Valve Solenoid Pilot Pneumatic N.C. Retrofit",
+        "Location": "602-027",
+        "Stock": 1
+    },
+    {
+        "PartID": "140167",
+        "Description": "Kit Internal set for Trap Air & Steam S/S 15mm",
+        "Location": "602-019",
+        "Stock": 5
+    },
+    {
+        "PartID": "140181",
+        "Description": "Battery PLC CJ2 CJ1W-BAT01",
+        "Location": "602-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "140239",
+        "Description": "Switch Float & Level Sensor TDR",
+        "Location": "602-060",
+        "Stock": 0
+    },
+    {
+        "PartID": "140258",
+        "Description": "Plug S/S 1/2 Hylok",
+        "Location": "602-022",
+        "Stock": 4
+    },
+    {
+        "PartID": "140260",
+        "Description": "Plug S/S 3/4 Hylok",
+        "Location": "602-022",
+        "Stock": 5
+    },
+    {
+        "PartID": "140261",
+        "Description": "Plug S/S 1 Hylok",
+        "Location": "602-022",
+        "Stock": 2
+    },
+    {
+        "PartID": "140264",
+        "Description": "Union S/S 3/4 SL X 3/4 SL",
+        "Location": "602-022",
+        "Stock": 1
+    },
+    {
+        "PartID": "140292",
+        "Description": "Plug S/S 1 BSP Hex Head",
+        "Location": "602-022",
+        "Stock": 2
+    },
+    {
+        "PartID": "140318",
+        "Description": "Washer Silicone Check Valve 3/4",
+        "Location": "602-005",
+        "Stock": 9
+    },
+    {
+        "PartID": "140319",
+        "Description": "Valve Check Steam 3/4 S/S",
+        "Location": "602-005",
+        "Stock": 4
+    },
+    {
+        "PartID": "140334",
+        "Description": "Gasket A/Door Round 600 Series-93",
+        "Location": "602-060",
+        "Stock": 2
+    },
+    {
+        "PartID": "140335",
+        "Description": "Union S/S 1/2 M X 6mm Bore Thru",
+        "Location": "602-004",
+        "Stock": 1
+    },
+    {
+        "PartID": "140397",
+        "Description": "Pump Vacuum CVS100 Gen 5 Tiger & Gorilla",
+        "Location": "602-060",
+        "Stock": 0
+    },
+    {
+        "PartID": "140476",
+        "Description": "Seal Viton 2.5 Tri-Clover",
+        "Location": "602-060",
+        "Stock": 2
+    },
+    {
+        "PartID": "140487",
+        "Description": "Sensor Pressure Steam Gen 5",
+        "Location": "602-003",
+        "Stock": 1
+    },
+    {
+        "PartID": "140489",
+        "Description": "Sensor Flow Water Gen 5",
+        "Location": "602-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "140516",
+        "Description": "Seal Viton 1.5 Tri-Clover",
+        "Location": "602-060",
+        "Stock": 4
+    },
+    {
+        "PartID": "140763",
+        "Description": "Actuator Valve 3/4 Valve Module",
+        "Location": "602-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "140766",
+        "Description": "Seat Kit 1/2 Valve Module",
+        "Location": "602-005",
+        "Stock": 4
+    },
+    {
+        "PartID": "140769",
+        "Description": "O-Ring Kit Valve Module",
+        "Location": "602-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "140770",
+        "Description": "Diaphragm Kit Pressure Controller",
+        "Location": "602-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "140852",
+        "Description": "Thermocouple T Type Small Tip Probe",
+        "Location": "602-060",
+        "Stock": 10
+    },
+    {
+        "PartID": "140854",
+        "Description": "Seal Viton Thermocouple 10-Way",
+        "Location": "602-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "140883",
+        "Description": "Switch Horizontal Float High Temp",
+        "Location": "602-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "140903",
+        "Description": "Connector Splicing 2.5mm 32A 2P",
+        "Location": "602-060",
+        "Stock": 10
+    },
+    {
+        "PartID": "140980",
+        "Description": "Cable Adapter M8 Plug - M12 Socket",
+        "Location": "602-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "141052",
+        "Description": "O Ring Pilot Valve Camozzi",
+        "Location": "602-027",
+        "Stock": 10
+    },
+    {
+        "PartID": "830327",
+        "Description": "Tape Teflon Premium Pink 15Mr",
+        "Location": "602-021",
+        "Stock": 4
+    },
+    {
+        "PartID": "830825",
+        "Description": "Ferrule Brass 1/4 Hylok",
+        "Location": "602-022",
+        "Stock": 2
+    },
+    {
+        "PartID": "830826",
+        "Description": "Ferrule Brass 3/8 Hylok",
+        "Location": "602-022",
+        "Stock": 20
+    },
+    {
+        "PartID": "830827",
+        "Description": "Ferrule Brass 1/2 Hylok",
+        "Location": "602-022",
+        "Stock": 7
+    },
+    {
+        "PartID": "830949",
+        "Description": "Ferrule Brass 3/4 Hylok",
+        "Location": "602-022",
+        "Stock": 13
+    },
+    {
+        "PartID": "830956",
+        "Description": "Ferrule Brass 1 Hylok",
+        "Location": "602-060",
+        "Stock": 8
+    },
+    {
+        "PartID": "830957",
+        "Description": "Ferrule Teflon 1/4",
+        "Location": "602-001",
+        "Stock": 9
+    },
+    {
+        "PartID": "830972",
+        "Description": "Ferrule S/S 1/2 Hylok",
+        "Location": "602-060",
+        "Stock": 10
+    },
+    {
+        "PartID": "830975",
+        "Description": "Ferrule S/S 12mm Hylok for Generator Float",
+        "Location": "602-022",
+        "Stock": 20
+    },
+    {
+        "PartID": "831018",
+        "Description": "Ferrule S/S 6mm Hylok",
+        "Location": "602-004",
+        "Stock": 6
+    },
+    {
+        "PartID": "831037",
+        "Description": "Grease AK50 45g Tube",
+        "Location": "602-001",
+        "Stock": 1
+    },
+    {
+        "PartID": "BHT 14089.00",
+        "Description": "Glide Ledge (Angled)",
+        "Location": "602-060",
+        "Stock": 6
+    },
+    {
+        "PartID": "BHT11962.63",
+        "Description": "Cap for Jet Arm Series 5 4 3",
+        "Location": "602-009",
+        "Stock": 2
+    },
+    {
+        "PartID": "BHT13523.17",
+        "Description": "Battery For Microprocessor All Models",
+        "Location": "602-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "BHT13801 10",
+        "Description": "Teflon Bearing for Innova Spray Arm",
+        "Location": "602-009",
+        "Stock": 11
+    },
+    {
+        "PartID": "BHT14088.00",
+        "Description": "Front Glide Ledge (Straight)",
+        "Location": "602-060",
+        "Stock": 3
+    },
+    {
+        "PartID": "BHT14116.40",
+        "Description": "Water Flap M5/ISO",
+        "Location": "602-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "BHT20212.01",
+        "Description": "Spring for Door with Glass M4",
+        "Location": "602-060",
+        "Stock": 2
+    },
+    {
+        "PartID": "BHT21339 00",
+        "Description": "Castor without brake",
+        "Location": "602-060",
+        "Stock": 8
+    },
+    {
+        "PartID": "BHT21340 00",
+        "Description": "Castor with brake",
+        "Location": "602-060",
+        "Stock": 8
+    },
+    {
+        "PartID": "BHT21970.00/9",
+        "Description": "Hose Dosing Pump All Models",
+        "Location": "602-009",
+        "Stock": 3
+    },
+    {
+        "PartID": "BHT22078.00/9",
+        "Description": "Valve Water Single",
+        "Location": "602-020",
+        "Stock": 1
+    },
+    {
+        "PartID": "BHT22107 07",
+        "Description": "Valve 230V Outlet Complete",
+        "Location": "602-060",
+        "Stock": 2
+    },
+    {
+        "PartID": "BHT29007.24",
+        "Description": "Relay Phoenix Contact 24V 1W 6A MR-24DC/21",
+        "Location": "602-009",
+        "Stock": 1
+    },
+    {
+        "PartID": "DRAGON-011",
+        "Description": "Large & Small Valve O-Ring",
+        "Location": "602-060",
+        "Stock": 2
+    },
+    {
+        "PartID": "FUGBI0102-1",
+        "Description": "Biological Indicator to suit Plasma Sterilizer 20 minute readout",
+        "Location": "602-060",
+        "Stock": 150
+    },
+    {
+        "PartID": "GET025",
+        "Description": "Gasket Door Ge 510/20",
+        "Location": "602-060",
+        "Stock": 2
+    },
+    {
+        "PartID": "GET027",
+        "Description": "Gasket Door Ge 660 X 660",
+        "Location": "602-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "MD013",
+        "Description": "Pressing roller Heat Sealer",
+        "Location": "602-060",
+        "Stock": 0
+    },
+    {
+        "PartID": "PLIQ2900009",
+        "Description": "Washer PTFE for Spray Arm IQ Range",
+        "Location": "602-060",
+        "Stock": 5
+    }
+];
+    (function(){
+        var extras = [];
+        try { extras = JSON.parse(localStorage.getItem('mins_602_inv')) || []; } catch(e) {}
+        window._inv602Data = window._inv602Base.slice();
+        extras.forEach(function(e){
+            if (!window._inv602Data.find(function(b){ return b.PartID===e.PartID && b.Location===e.Location; }))
+                window._inv602Data.push(e);
+        });
+    })();
+
     function saveCustomParts() { localStorage.setItem('mins_custom_parts', JSON.stringify(customParts)); }
 
     let masterDrive = JSON.parse(localStorage.getItem('mins_master_drive')) || {};
@@ -516,7 +1888,7 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
     let currentLocalList = [];
     let currentLocalMode = "";
 
-    const modeLabels = { out: 'Out of Stock', parts: 'All Parts', pan: 'Pan Locations', pan_alarms: 'Pan Alarms', bht: 'BHT Codes', gen5: 'Gen 5 Alarms', tangent: 'Tangent Faults', ken: 'Ken Alarms', bandeli: 'Bandeli', platypus: 'Platypus', hippopotamus: 'Hippopotamus' };
+    const modeLabels = { out: 'Out of Stock', parts: '602 Inventory', pan: 'Pan Locations', pan_alarms: 'Pan Alarms', bht: 'BHT Codes', gen5: 'Gen 5 Alarms', tangent: 'Tangent Faults', ken: 'Ken Alarms', bandeli: 'Bandeli', platypus: 'Platypus', hippopotamus: 'Hippopotamus', inv601: '601 Inventory' };
 
     // ── Parts edit/delete persistence ────────────────────────────────
     let partsEdits = {};
@@ -573,6 +1945,12 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         applyPartsOverrides();
         applyPanOverrides();
 
+        // Merge 602 base data into db.parts
+        (window._inv602Data || []).forEach(function(item) {
+            if (!db.parts.find(function(p) { return p.PartID === item.PartID && p.Location === item.Location; })) {
+                db.parts.push(item);
+            }
+        });
         // Merge custom parts into db.parts (avoid duplicates)
         customParts.forEach(cp => {
             if (!db.parts.find(p => p.PartID === cp.PartID && p.Location === cp.Location)) {
@@ -591,6 +1969,7 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         document.getElementById('b-platypus').innerText = db.platypus.length || 0;
         document.getElementById('b-hippo').innerText = db.hippopotamus.length || 0;
         document.getElementById('b-pan-alarms').innerText = db.pan_alarms.length || 0;
+        document.getElementById('b-inv601').innerText = (window._inv601Data || []).length || 0;
     }
 
     function openMode(mode, filterKey = null, filterValue = null) {
@@ -600,7 +1979,7 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         
         // Show/hide Add button
         const addBtn = document.getElementById('addNewBtn');
-        if ((mode === 'parts' || mode === 'pan') && !filterValue) {
+        if ((mode === 'parts' || mode === 'pan' || mode === 'inv601') && !filterValue) {
             addBtn.style.display = 'flex';
         } else {
             addBtn.style.display = 'none';
@@ -618,7 +1997,9 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
             backBtn.onclick = closeSecondary;
         }
         
-        let list = (mode === 'out') ? db.parts.filter(p => !p.Stock || parseInt(p.Stock) === 0) : db[mode];
+        let list = (mode === 'out') ? db.parts.filter(p => !p.Stock || parseInt(p.Stock) === 0)
+                  : (mode === 'inv601') ? (window._inv601Data || [])
+                  : db[mode];
         if (filterKey && filterValue) {
             list = list.filter(item => item[filterKey] === filterValue);
         }
@@ -629,7 +2010,8 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         document.getElementById('localSearchWrapper').style.display = 'block';
         document.getElementById('localSearch').value = '';
 
-        renderLocalList(list, mode, !filterValue);
+        const diagnosticModes = ['bht','gen5','tangent','ken','bandeli','platypus','hippopotamus','pan_alarms'];
+        renderLocalList(list, mode, !filterValue && !diagnosticModes.includes(mode));
         document.getElementById('secondaryView').scrollTop = 0;
     }
 
@@ -695,13 +2077,20 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         list.forEach((item, idx) => {
             let t = item['Error Code / Fault Name'] || item.PartID || item.Code || item['Error Code'] || item['Unit S/N'] || 'Unknown';
             let s = item['Alarm Description / Details'] || item.Description || item.Error || item['Display / Message'] || item.Location || item['Alarm Description'] || '';
-            const isPart = (mode === 'parts' || mode === 'out' || mode === 'pan');
+        const isPart = (mode === 'parts' || mode === 'out' || mode === 'pan' || mode === 'inv601');
             if (isPart) {
                 const card = document.createElement('div');
                 card.className = 'data-card';
                 let subtitle = s;
                 if (mode === 'pan') {
                     subtitle = [item.Hospital, item.Block, item.Ward].filter(Boolean).join(' › ');
+                } else if (mode === 'inv601' || mode === 'parts' || mode === 'out') {
+                    const stockNum = parseInt(item.Stock) || 0;
+                    const stockBadge = stockNum > 0
+                        ? `<span style="background:#dcfce7;color:#16a34a;border-radius:6px;padding:2px 7px;font-size:0.68rem;font-weight:800;margin-left:6px;">${stockNum} in stock</span>`
+                        : `<span style="background:#fef2f2;color:#ef4444;border-radius:6px;padding:2px 7px;font-size:0.68rem;font-weight:800;margin-left:6px;">Out of stock</span>`;
+                    subtitle = (item.Location || '') + stockBadge;
+                    t = (item.PartID || '') + ' — ' + (item.Description || '');
                 }
                 card.innerHTML = `<div class="data-title">${t}</div><div class="data-sub">${subtitle}</div><div class="hold-ring"><svg viewBox="0 0 36 36"><circle class="ring-track" cx="18" cy="18" r="15.9"/><circle class="ring-fill" cx="18" cy="18" r="15.9"/></svg></div>`;
                 attachLongPress(card, item);
@@ -713,7 +2102,17 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
     }
 
     function handleLocalSearch() {
-        const q = document.getElementById('localSearch').value.toLowerCase().trim();
+        const rawQ = document.getElementById('localSearch').value;
+        const q = rawQ.toLowerCase().trim();
+        // Show/hide clear button
+        const clrBtn = document.getElementById('localSearchClear');
+        if (clrBtn) clrBtn.style.display = q ? 'block' : 'none';
+        // Echo query in section title
+        if (q) {
+            document.getElementById('secTitle').innerText = '“' + rawQ.trim() + '”';
+        } else {
+            document.getElementById('secTitle').innerText = (modeLabels[activeMode] || activeMode);
+        }
         const isTopLevel = document.querySelector('.back-btn').innerText.includes('Home');
         
         if(!q) {
@@ -724,13 +2123,29 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         renderLocalList(filtered, currentLocalMode, false);
     }
 
+    function clearMainSearch() {
+        document.getElementById('mainSearch').value = '';
+        document.getElementById('mainSearchClear').style.display = 'none';
+        closeSecondary();
+    }
+    function clearLocalSearch() {
+        document.getElementById('localSearch').value = '';
+        document.getElementById('localSearchClear').style.display = 'none';
+        document.getElementById('secTitle').innerText = (modeLabels[activeMode] || activeMode);
+        handleLocalSearch();
+    }
     function handleGlobalSearch() {
-        const q = document.getElementById('mainSearch').value.toLowerCase().trim();
-        if(!q) return;
+        const rawQ = document.getElementById('mainSearch').value;
+        const q = rawQ.toLowerCase().trim();
+        // Show/hide clear button
+        const clrBtn = document.getElementById('mainSearchClear');
+        if (clrBtn) clrBtn.style.display = q ? 'block' : 'none';
+        if (!q) { closeSecondary(); return; }
         document.body.classList.add('view-active');
-        document.getElementById('secTitle').innerText = "Search";
+        // Show what's being searched in the title
+        document.getElementById('secTitle').innerText = '\u201c' + rawQ.trim() + '\u201d';
         const backBtn = document.querySelector('.back-btn');
-        backBtn.innerHTML = `<i class="ph-bold ph-arrow-left"></i> Home`;
+        backBtn.innerHTML = `<i class="ph-bold ph-arrow-left"></i> Search`;
         backBtn.onclick = closeSecondary;
         const content = document.getElementById('secContent');
         content.innerHTML = "";
@@ -748,6 +2163,19 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
                 });
             }
         });
+        // Also search 601 Inventory
+        const inv601Matches = (window._inv601Data || []).filter(item => JSON.stringify(item).toLowerCase().includes(q));
+        if (inv601Matches.length) {
+            found += inv601Matches.length;
+            content.innerHTML += `<div class="section-title" style="margin-top:15px; border-bottom:1px solid #e2e8f0; padding-bottom:5px;"><span>601 Inventory</span><span>${inv601Matches.length}</span></div>`;
+            inv601Matches.forEach(item => {
+                const stockNum = parseInt(item.Stock) || 0;
+                const stockBadge = stockNum > 0
+                    ? `<span style="background:#dcfce7;color:#16a34a;border-radius:6px;padding:2px 7px;font-size:0.68rem;font-weight:800;margin-left:6px;">${stockNum} in stock</span>`
+                    : `<span style="background:#fef2f2;color:#ef4444;border-radius:6px;padding:2px 7px;font-size:0.68rem;font-weight:800;margin-left:6px;">Out of stock</span>`;
+                content.innerHTML += `<div class="data-card" style="margin-bottom:10px;" onclick='showDetails(${JSON.stringify(item).replace(/'/g, "&#39;")}, "inv601")'><div class="data-title">${item.PartID} &mdash; ${item.Description}</div><div class="data-sub">${item.Location}${stockBadge}</div></div>`;
+            });
+        }
         if(found === 0) content.innerHTML = `<div class="empty-state"><i class="ph-fill ph-magnifying-glass empty-icon"></i><h3>No matches found</h3></div>`;
     }
 
@@ -781,8 +2209,9 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
     function showDetails(item, type) {
         currentPartID = item.PartID || item.Code || item['Error Code'] || item['Unit S/N'] || item['Error Code / Fault Name'] || 'Unknown';
         const b = document.getElementById('modalBody');
-        const isPart    = (type === 'parts' || type === 'out');
-        const isErrCode = !isPart && type !== 'pan';
+        const isPart    = (type === 'parts' || type === 'out' || type === 'inv601');
+        const isErrCode = !isPart && type !== 'pan' && type !== 'inv601';
+
 
         let html = "";
 
@@ -818,7 +2247,7 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
             }
         });
 
-        if (isPart) {
+        if (isPart && type !== 'inv601') {
             html += `
                 <div style="display:flex; gap:10px; margin-top:20px;">
                     <button class="btn btn-primary" style="flex:1" onclick="genEmail('${currentPartID}', 'Site Job Task')"><i class="ph-fill ph-envelope"></i> Task</button>
@@ -831,16 +2260,20 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         if (isErrCode) {
             const errKey = [type, currentPartID].join('::');
 
-            // Keyword-based auto-matches
+            // Keyword-based auto-matches across ALL parts folders
             const keywords = extractKeywords(item);
-            const allParts = db.parts || [];
+            const allParts = (db.parts || []).concat(
+                (window._inv601Data || []).filter(function(p) {
+                    return !(db.parts || []).find(function(b) { return b.PartID === p.PartID && b.Location === p.Location; });
+                })
+            );
             const scored = allParts
-                .map(p => ({ part: p, score: scorePartMatch(p, keywords) }))
+                .map(p => ({ part: p, score: scorePartMatch(p, keywords), folder: (db.parts||[]).find(b=>b.PartID===p.PartID&&b.Location===p.Location) ? 'parts' : 'inv601' }))
                 .filter(x => x.score > 0)
                 .sort((a, b) => b.score - a.score)
-                .slice(0, 6);
+                .slice(0, 8);
 
-            // Manually pinned parts
+            // Manually pinned parts (search both folders)
             const pinned = (partLinks[errKey] || [])
                 .map(pid => allParts.find(p => p.PartID === pid))
                 .filter(Boolean);
@@ -873,8 +2306,9 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
 
             if (scored.length > 0) {
                 html += `<div style="font-size:0.7rem; font-weight:800; color:#64748b; text-transform:uppercase; letter-spacing:0.8px; margin-bottom:8px; margin-top:${pinned.length ? '12px' : '0'};"><i class="ph-fill ph-magic-wand"></i> Smart Suggestions</div>`;
-                scored.forEach(({ part: p, score }) => {
+                scored.forEach(({ part: p, score, folder }) => {
                     const stock = p.Stock > 0 ? `<span style="background:#dcfce7; color:#16a34a; border-radius:8px; padding:3px 8px; font-size:0.7rem; font-weight:800;">${p.Stock} in stock</span>` : `<span style="background:#fef2f2; color:#ef4444; border-radius:8px; padding:3px 8px; font-size:0.7rem; font-weight:800;">Out of stock</span>`;
+                    const folderBadge = folder === 'inv601' ? `<span style="background:#ede9fe;color:#7c3aed;border-radius:6px;padding:2px 6px;font-size:0.65rem;font-weight:800;">601</span>` : `<span style="background:#eff6ff;color:#3b82f6;border-radius:6px;padding:2px 6px;font-size:0.65rem;font-weight:800;">602</span>`;
                     const relevanceDots = '●'.repeat(Math.min(score, 5));
                     html += `
                     <div style="background:var(--surface); border:1px solid #e2e8f0; border-radius:12px; padding:12px 14px; margin-bottom:8px; cursor:pointer; display:flex; align-items:center; justify-content:space-between; gap:10px;" onclick='showDetails(${JSON.stringify(p).replace(/'/g,"&apos;")}, "parts")'>
@@ -903,7 +2337,11 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
     function openPartLinker(errKey) {
         const q = prompt('Enter Part ID or keyword to search:');
         if (!q) return;
-        const allParts = db.parts || [];
+        const allParts = (db.parts || []).concat(
+            (window._inv601Data || []).filter(function(p) {
+                return !(db.parts || []).find(function(b) { return b.PartID === p.PartID && b.Location === p.Location; });
+            })
+        );
         const ql = q.toLowerCase();
         const matches = allParts.filter(p =>
             (p.PartID || '').toLowerCase().includes(ql) ||
@@ -952,6 +2390,1276 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
             document.getElementById('detailModal').classList.remove('active');
         }
     }
+
+    
+    // ── 601 Inventory ─────────────────────────────────────────────────
+    window._inv601Base = [
+    {
+        "PartID": "011028",
+        "Description": "Gasket Door Manual White 60 Dur",
+        "Location": "601-060",
+        "Stock": 9
+    },
+    {
+        "PartID": "011915",
+        "Description": "Gasket Steam Generator 305 Dia SG30-75",
+        "Location": "601-060",
+        "Stock": 2
+    },
+    {
+        "PartID": "020636",
+        "Description": "PCB Logic Complete P/W 005",
+        "Location": "601-026",
+        "Stock": 1
+    },
+    {
+        "PartID": "020835",
+        "Description": "Wheel Carriage Recess 65mm",
+        "Location": "601-039",
+        "Stock": 11
+    },
+    {
+        "PartID": "020937",
+        "Description": "PCB Actuator Booster Card A/D T6",
+        "Location": "601-060",
+        "Stock": 2
+    },
+    {
+        "PartID": "022018",
+        "Description": "Pin Ballnut Auto Loader",
+        "Location": "601-060",
+        "Stock": 4
+    },
+    {
+        "PartID": "022033",
+        "Description": "Seal Thermocouple Gland Fitting",
+        "Location": "601-060",
+        "Stock": 10
+    },
+    {
+        "PartID": "022507",
+        "Description": "Element Steam Gen T6 & T9 7Kw Stock (139482)",
+        "Location": "601-060",
+        "Stock": 2
+    },
+    {
+        "PartID": "022533",
+        "Description": "Gasket Steam Generator T5 T6 & T9",
+        "Location": "601-029",
+        "Stock": 2
+    },
+    {
+        "PartID": "023350",
+        "Description": "Boiler Assy P/W Duck",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "023497",
+        "Description": "Leading Edge C66",
+        "Location": "601-030",
+        "Stock": 1
+    },
+    {
+        "PartID": "024458",
+        "Description": "Wheel Carriage Lassie",
+        "Location": "601-017",
+        "Stock": 8
+    },
+    {
+        "PartID": "024903",
+        "Description": "Thermostat Assembly T5  T6  T9",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "025912",
+        "Description": "Kit Retrofit Brass Upgrade P/W",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "026271",
+        "Description": "Gasket Steam Generator Gen 5",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "026496-WA",
+        "Description": "Label Maintenance Stick On Gen 5 FOR ORDERING PURPOSES ONLY",
+        "Location": "601-060",
+        "Stock": 2000
+    },
+    {
+        "PartID": "026875",
+        "Description": "Acrylic Adapter Beijer Screen T9",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "026927",
+        "Description": "Kit Retrofit Condensate Removal 96 Gen 5",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "026976",
+        "Description": "Handle Element Plate Removal Steriliser",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "027293",
+        "Description": "Element Steam Generator 66/96 7 kW S/S Y24",
+        "Location": "601-060",
+        "Stock": 17
+    },
+    {
+        "PartID": "027469",
+        "Description": "Kit Retrofit Water Level Sensor Gen 5 66",
+        "Location": "601-601",
+        "Stock": 0
+    },
+    {
+        "PartID": "130004",
+        "Description": "Contactor Vac Pump And T4 Elemnt Ca71610",
+        "Location": "601-601",
+        "Stock": 1
+    },
+    {
+        "PartID": "130334",
+        "Description": "Cable Flexible 3 Core 1.00 mm Orange",
+        "Location": "601-060",
+        "Stock": 10
+    },
+    {
+        "PartID": "131980",
+        "Description": "Gasket Door Manual Blue N.393-Se1057",
+        "Location": "601-060",
+        "Stock": 5
+    },
+    {
+        "PartID": "132232",
+        "Description": "Cable Flexible 0.5 mm Red",
+        "Location": "601-040",
+        "Stock": 75
+    },
+    {
+        "PartID": "132232",
+        "Description": "Cable Flexible 0.5 mm Red",
+        "Location": "601-060",
+        "Stock": 80
+    },
+    {
+        "PartID": "132239",
+        "Description": "Cable Flexible 0.5 mm Black",
+        "Location": "601-040",
+        "Stock": 195
+    },
+    {
+        "PartID": "132239",
+        "Description": "Cable Flexible 0.5 mm Black",
+        "Location": "601-060",
+        "Stock": 80
+    },
+    {
+        "PartID": "134771",
+        "Description": "Gauge Pressure 80 Dia 0-400 Kpa",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "135786",
+        "Description": "Valve Safety S/S 1/2 BSP 650 Kpa",
+        "Location": "601-060",
+        "Stock": 0
+    },
+    {
+        "PartID": "135786",
+        "Description": "Valve Safety S/S 1/2 BSP 650 Kpa",
+        "Location": "601-060",
+        "Stock": 0
+    },
+    {
+        "PartID": "135786",
+        "Description": "Valve Safety S/S 1/2 BSP 650 Kpa",
+        "Location": "601-060",
+        "Stock": 0
+    },
+    {
+        "PartID": "135907",
+        "Description": "Transducer Pressure Wika S/S",
+        "Location": "601-060",
+        "Stock": 2
+    },
+    {
+        "PartID": "135962",
+        "Description": "Rtd 400 X 6 Pt100 1/2BSP 2M",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "137445",
+        "Description": "Pump P/W 005 H/W Davey or Vada V2060-C",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "137515",
+        "Description": "Thermometer 0-120",
+        "Location": "601-001",
+        "Stock": 1
+    },
+    {
+        "PartID": "137545",
+        "Description": "Washer Flat S/S M6",
+        "Location": "601-060",
+        "Stock": 5
+    },
+    {
+        "PartID": "137552",
+        "Description": "Washer Spring S/S M6",
+        "Location": "601-060",
+        "Stock": 5
+    },
+    {
+        "PartID": "137553",
+        "Description": "Nut S/S M6",
+        "Location": "601-060",
+        "Stock": 5
+    },
+    {
+        "PartID": "137711",
+        "Description": "Valve Safety S/S 1/2 BSP 260 Kpa",
+        "Location": "601-060",
+        "Stock": 0
+    },
+    {
+        "PartID": "137711",
+        "Description": "Valve Safety S/S 1/2 BSP 260 Kpa",
+        "Location": "601-060",
+        "Stock": 0
+    },
+    {
+        "PartID": "137711",
+        "Description": "Valve Safety S/S 1/2 BSP 260 Kpa",
+        "Location": "601-060",
+        "Stock": 0
+    },
+    {
+        "PartID": "137711",
+        "Description": "Valve Safety S/S 1/2 BSP 260 Kpa",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "137711",
+        "Description": "Valve Safety S/S 1/2 BSP 260 Kpa",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "137818",
+        "Description": "Gasket Door BWC15",
+        "Location": "601-060",
+        "Stock": 0
+    },
+    {
+        "PartID": "137872",
+        "Description": "Switch Horizontal Float",
+        "Location": "601-060",
+        "Stock": 2
+    },
+    {
+        "PartID": "138340",
+        "Description": "Relay Omron Ly2-24Dc C/W Base",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "138444",
+        "Description": "Valve Solenoid Steam 1/2 - individually boxed",
+        "Location": "601-060",
+        "Stock": 6
+    },
+    {
+        "PartID": "138488",
+        "Description": "Tube Pfa 1/2 Dia",
+        "Location": "601-601",
+        "Stock": 37
+    },
+    {
+        "PartID": "138896",
+        "Description": "Filter Water Cartridge Softener Tangent",
+        "Location": "601-060",
+        "Stock": 9
+    },
+    {
+        "PartID": "138922",
+        "Description": "Actuator Door Horizontal X96",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "138967",
+        "Description": "Heat Exchanger Tiger/Gorilla",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "138985",
+        "Description": "Pump Vacuum X96 Gorilla & Chinchilla",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "139047",
+        "Description": "Heat Exchanger Chilled Water Gorilla",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "139083",
+        "Description": "Pump Steam Generator S/S",
+        "Location": "601-009",
+        "Stock": 1
+    },
+    {
+        "PartID": "139189",
+        "Description": "Printer Tangent Plus-Rc Thermal (930840)",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "139281",
+        "Description": "Filter Water Cartridge Tangent",
+        "Location": "601-060",
+        "Stock": 0
+    },
+    {
+        "PartID": "139297",
+        "Description": "Element P/W Duck",
+        "Location": "601-060",
+        "Stock": 0
+    },
+    {
+        "PartID": "139413",
+        "Description": "Gasket Element Panwasher Duck Series",
+        "Location": "601-011",
+        "Stock": 4
+    },
+    {
+        "PartID": "139424",
+        "Description": "Vent Cowl Dwv 40mm",
+        "Location": "601-060",
+        "Stock": 3
+    },
+    {
+        "PartID": "139469",
+        "Description": "Valve Motorized 1\" BSP S/S Ball 3-Way",
+        "Location": "601-060",
+        "Stock": 2
+    },
+    {
+        "PartID": "139474",
+        "Description": "Solenoid Trolley Rail Lock",
+        "Location": "601-006",
+        "Stock": 2
+    },
+    {
+        "PartID": "139476",
+        "Description": "Switch Micro Short Roller Lever Lassie",
+        "Location": "601-006",
+        "Stock": 2
+    },
+    {
+        "PartID": "139644",
+        "Description": "Belt for 1500 Drive L6 L9 Pre 1210 (1653mm) s/ block and s/spring",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "139655",
+        "Description": "Belt For 1000 Belt Drive (1307mm)",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "139656",
+        "Description": "Belt For 1200 1300 Belt Drive (1457mm) with steel block and spring steel",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "139694",
+        "Description": "Valve Pneumatic 1/2\" S/S Steam NO",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "139716",
+        "Description": "Valve Pneumatic 3/4\" S/S Steam NO",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "139818",
+        "Description": "Pump Steam Generator S/S C/W Motor",
+        "Location": "601-060",
+        "Stock": 0
+    },
+    {
+        "PartID": "139857",
+        "Description": "Belt For 1500 Belt Drive (1562mm)",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "139884",
+        "Description": "Plug S/S 1/4 Hylok",
+        "Location": "601-060",
+        "Stock": 6
+    },
+    {
+        "PartID": "139946",
+        "Description": "Valve S/S Check 1/2 Tube",
+        "Location": "601-022",
+        "Stock": 2
+    },
+    {
+        "PartID": "139960",
+        "Description": "Gasket Door Round 55 Jerboa/Mongoose",
+        "Location": "601-023",
+        "Stock": 1
+    },
+    {
+        "PartID": "139979",
+        "Description": "Gasket Door Round 159 Capybara",
+        "Location": "601-060",
+        "Stock": 5
+    },
+    {
+        "PartID": "139980",
+        "Description": "Gasket A/Door Round 900 Series-93",
+        "Location": "601-601",
+        "Stock": 3
+    },
+    {
+        "PartID": "140008",
+        "Description": "Pump Vacuum X66 Tiger And Chipmunk",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "140067",
+        "Description": "Heat Exchanger Clean Steam",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "140073",
+        "Description": "Box Control to suit Power Board COBO Main",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "140093",
+        "Description": "Control Box CBJ Jumbo Grey w/ DC Port",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "140101",
+        "Description": "Validation Lead T-Type",
+        "Location": "601-060",
+        "Stock": 10
+    },
+    {
+        "PartID": "140102",
+        "Description": "Plug T-Type",
+        "Location": "601-060",
+        "Stock": 10
+    },
+    {
+        "PartID": "140181",
+        "Description": "Battery PLC CJ2 CJ1W-BAT01",
+        "Location": "601-060",
+        "Stock": 0
+    },
+    {
+        "PartID": "140239",
+        "Description": "Switch Float & Level Sensor TDR",
+        "Location": "601-060",
+        "Stock": 0
+    },
+    {
+        "PartID": "140239",
+        "Description": "Switch Float & Level Sensor TDR",
+        "Location": "601-060",
+        "Stock": 0
+    },
+    {
+        "PartID": "140239",
+        "Description": "Switch Float & Level Sensor TDR",
+        "Location": "601-060",
+        "Stock": 0
+    },
+    {
+        "PartID": "140239",
+        "Description": "Switch Float & Level Sensor TDR",
+        "Location": "601-060",
+        "Stock": 0
+    },
+    {
+        "PartID": "140239",
+        "Description": "Switch Float & Level Sensor TDR",
+        "Location": "601-060",
+        "Stock": 0
+    },
+    {
+        "PartID": "140239",
+        "Description": "Switch Float & Level Sensor TDR",
+        "Location": "601-060",
+        "Stock": 0
+    },
+    {
+        "PartID": "140239",
+        "Description": "Switch Float & Level Sensor TDR",
+        "Location": "601-060",
+        "Stock": 0
+    },
+    {
+        "PartID": "140239",
+        "Description": "Switch Float & Level Sensor TDR",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "140239",
+        "Description": "Switch Float & Level Sensor TDR",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "140239",
+        "Description": "Switch Float & Level Sensor TDR",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "140239",
+        "Description": "Switch Float & Level Sensor TDR",
+        "Location": "601-601",
+        "Stock": 0
+    },
+    {
+        "PartID": "140239",
+        "Description": "Switch Float & Level Sensor TDR",
+        "Location": "601-601",
+        "Stock": 0
+    },
+    {
+        "PartID": "140239",
+        "Description": "Switch Float & Level Sensor TDR",
+        "Location": "601-601",
+        "Stock": 0
+    },
+    {
+        "PartID": "140239",
+        "Description": "Switch Float & Level Sensor TDR",
+        "Location": "601-601",
+        "Stock": 0
+    },
+    {
+        "PartID": "140239",
+        "Description": "Switch Float & Level Sensor TDR",
+        "Location": "601-601",
+        "Stock": 0
+    },
+    {
+        "PartID": "140303",
+        "Description": "Touch Screen C/Over T4 T5 & T6 T70 Black (Service Screen 139180 Swap)",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "140308",
+        "Description": "Touch Screen C/Over T9 Series Black (Service Screen 138900 Swap)",
+        "Location": "601-060",
+        "Stock": 0
+    },
+    {
+        "PartID": "140334",
+        "Description": "Gasket A/Door Round 600 Series-93",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "140348",
+        "Description": "Filter 50 micron Cartridge",
+        "Location": "601-060",
+        "Stock": 19
+    },
+    {
+        "PartID": "140383",
+        "Description": "Valve Module Steam to Jacket",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "140418",
+        "Description": "Valve Safety S/S 3/4\" BSP 310 Kpa",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "140430",
+        "Description": "Actuator Door 55/66/96 OSPE25 Gen 5",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "140439",
+        "Description": "Motor Servo Door Gen 5 All Models",
+        "Location": "601-060",
+        "Stock": 0
+    },
+    {
+        "PartID": "140439",
+        "Description": "Motor Servo Door Gen 5 All Models",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "140443",
+        "Description": "Valve Pneumatic Pressure Controller",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "140458",
+        "Description": "Valve Pneumatic 1\" Tri-Clover S/S NC",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "140471",
+        "Description": "PLC CPU NX102-9000 Gen 5",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "140471",
+        "Description": "PLC CPU NX102-9000 Gen 5",
+        "Location": "601-060",
+        "Stock": 0
+    },
+    {
+        "PartID": "140481",
+        "Description": "Cap S/S 1.5\" Tri-Clover",
+        "Location": "601-060",
+        "Stock": 2
+    },
+    {
+        "PartID": "140487",
+        "Description": "Sensor Pressure Steam Gen 5",
+        "Location": "601-003",
+        "Stock": 4
+    },
+    {
+        "PartID": "140488",
+        "Description": "Sensor Pressure Air Gen 5",
+        "Location": "601-003",
+        "Stock": 1
+    },
+    {
+        "PartID": "140489",
+        "Description": "Sensor Flow Water Gen 5",
+        "Location": "601-060",
+        "Stock": 2
+    },
+    {
+        "PartID": "140506",
+        "Description": "Valve Bank 8 Station Gen 5",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "140510",
+        "Description": "Resistor Regen 50R 80W",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "140515",
+        "Description": "Cylinder Door Cover Upper Gen 5",
+        "Location": "601-060",
+        "Stock": 2
+    },
+    {
+        "PartID": "140526",
+        "Description": "Union S/S 1/4 SL X 3/4 M",
+        "Location": "601-060",
+        "Stock": 6
+    },
+    {
+        "PartID": "140572",
+        "Description": "Switch Door Cylinder Gen 5",
+        "Location": "601-060",
+        "Stock": 2
+    },
+    {
+        "PartID": "140584",
+        "Description": "Cable M12x4 A-Coded Sockets One End 10m",
+        "Location": "601-060",
+        "Stock": 5
+    },
+    {
+        "PartID": "140586",
+        "Description": "Contactor 2P 25A 24V Coil",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "140694",
+        "Description": "Cylinder Door Cover Lower Gen 5",
+        "Location": "601-060",
+        "Stock": 2
+    },
+    {
+        "PartID": "140701",
+        "Description": "Tee S/S Branch 1 Sl X 1/2 F",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "140730",
+        "Description": "Rtd 250 X 6 S/S Duplex Jacket",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "140806",
+        "Description": "Heat Exchanger Large CVS100 Gen 5 Tiger/Gorilla",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "140807",
+        "Description": "Heat Exchanger Small CVS100 Gen 5 Tiger/Gorilla",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "140815",
+        "Description": "Rtd 120 X 6 S/S Duplex Drain",
+        "Location": "601-060",
+        "Stock": 2
+    },
+    {
+        "PartID": "140832",
+        "Description": "Touch Screen Beijer X2 Pro 10 Gorilla/Chinchilla & 99 913 139 159",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "140843",
+        "Description": "Seal Kit Float Trap Main Body Spirax Sarco FT14",
+        "Location": "601-060",
+        "Stock": 9
+    },
+    {
+        "PartID": "140966",
+        "Description": "Actuator Door 66 OSPE50 Gen 5 (Post April 2023)",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "140966",
+        "Description": "Actuator Door 66 OSPE50 Gen 5 (Post April 2023)",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "140980",
+        "Description": "Cable Adapter M8 Plug - M12 Socket",
+        "Location": "601-060",
+        "Stock": 5
+    },
+    {
+        "PartID": "266148-A",
+        "Description": "Custom Loom TEX 6 (Elements Only)",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "830974",
+        "Description": "Ferrule S/S 1 Hylok",
+        "Location": "601-060",
+        "Stock": 5
+    },
+    {
+        "PartID": "831004",
+        "Description": "Danger Out Of Service Tags Black/Red/White",
+        "Location": "601-002",
+        "Stock": 4
+    },
+    {
+        "PartID": "AWSMEMB",
+        "Description": "AWS Membrane 4021",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "BHT11001.00",
+        "Description": "Runner Nylon White M5",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "BHT11685.10",
+        "Description": "Door Mounting parts Right compl",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "BHT11685.11",
+        "Description": "Door Mounting Parts Left compl",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "BHT12345.06",
+        "Description": "Runner Nylon White M5ISO",
+        "Location": "601-060",
+        "Stock": 2
+    },
+    {
+        "PartID": "BHT12345.07",
+        "Description": "Runner Nylon Green M5ISO",
+        "Location": "601-060",
+        "Stock": 2
+    },
+    {
+        "PartID": "BHT13016.00/3",
+        "Description": "Element Tank Heating M4",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "BHT13048.01",
+        "Description": "Dosing Pump All Models",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "BHT13075 02",
+        "Description": "Proximity Sensor M12, PNP (Door Up Position with Spring loaded)",
+        "Location": "601-060",
+        "Stock": 2
+    },
+    {
+        "PartID": "BHT13152 06",
+        "Description": "Safety Ledge for Door (Pheonix Controller)",
+        "Location": "601-060",
+        "Stock": 4
+    },
+    {
+        "PartID": "BHT13152.01",
+        "Description": "Safety Ledge for Door",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "BHT13523.17",
+        "Description": "Battery For Microprocessor All Models",
+        "Location": "601-016",
+        "Stock": 2
+    },
+    {
+        "PartID": "BHT13801 10",
+        "Description": "Teflon Bearing for Innova Spray Arm",
+        "Location": "601-009",
+        "Stock": 9
+    },
+    {
+        "PartID": "BHT2.44.01.347",
+        "Description": "Door Back Holder 1 Right  M4 (00157.01)",
+        "Location": "601-060",
+        "Stock": 3
+    },
+    {
+        "PartID": "BHT2.44.01.348",
+        "Description": "Door Back Holder 2 M4 Left (00158.01)",
+        "Location": "601-060",
+        "Stock": 2
+    },
+    {
+        "PartID": "BHT20212.01",
+        "Description": "Spring for Door with Glass M4",
+        "Location": "601-060",
+        "Stock": 8
+    },
+    {
+        "PartID": "BHT20514.00/9",
+        "Description": "Wheels To Rack  Complete M4",
+        "Location": "601-017",
+        "Stock": 0
+    },
+    {
+        "PartID": "BHT20965 01",
+        "Description": "Dosing Tube For Peracetic Acid and Glutaraldehyde",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "BHT21339 00",
+        "Description": "Castor without brake",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "BHT21340 00",
+        "Description": "Castor with brake",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "BHT21475.01",
+        "Description": "Sealing to steam Gasket",
+        "Location": "601-060",
+        "Stock": 6
+    },
+    {
+        "PartID": "BHT21594 00",
+        "Description": "Steam Hose 3/4 inch (1310 mm)",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "BHT21992.10",
+        "Description": "Turbine High Capacity Air M3 M4 M5 M5ISO",
+        "Location": "601-004",
+        "Stock": 7
+    },
+    {
+        "PartID": "BHT21997.00/9",
+        "Description": "Sterile Air Filter For Drying M4 & M5",
+        "Location": "601-001",
+        "Stock": 3
+    },
+    {
+        "PartID": "BHT21999.03",
+        "Description": "Filter Drying Sterile Air Touchline M5 M5ISO",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "BHT22078.00/9",
+        "Description": "Valve Water Single",
+        "Location": "601-020",
+        "Stock": 2
+    },
+    {
+        "PartID": "BHT22107 00#001",
+        "Description": "Valve Drain M4 M5 M5 ISO",
+        "Location": "601-060",
+        "Stock": 0
+    },
+    {
+        "PartID": "BHT22815.01",
+        "Description": "Thermostat Tank",
+        "Location": "601-060",
+        "Stock": 0
+    },
+    {
+        "PartID": "BHT22815.03",
+        "Description": "Safety Thermostat +200 - 240 deg C  Typ EM-50/U",
+        "Location": "601-060",
+        "Stock": 0
+    },
+    {
+        "PartID": "BHT22850.03",
+        "Description": "Level Switch Double E3/M3/M4 (75/30 + 115/55 mm)",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "BHT22869.06",
+        "Description": "Flowmeter (22869.06)",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "BHT22869.15",
+        "Description": "Flowmeter",
+        "Location": "601-060",
+        "Stock": 3
+    },
+    {
+        "PartID": "BHT22945.13",
+        "Description": "Display and Keypad Panel M3/E3",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "BHT23017.11",
+        "Description": "Thermostat 30-85C Limit Switch 110C",
+        "Location": "601-060",
+        "Stock": 2
+    },
+    {
+        "PartID": "BHT23112.06",
+        "Description": "Printer Alfapanel M4 M5 M5ISO",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "BHT26647.28",
+        "Description": "Power Supply 100-240VAC/24VDC 2,5 A",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "BHT26647.28",
+        "Description": "Power Supply 100-240VAC/24VDC 2,5 A",
+        "Location": "601-601",
+        "Stock": 1
+    },
+    {
+        "PartID": "BHT29007.21",
+        "Description": "Relay and Base Phoenix Contact 24V, 1W, 6A MR- 24DC/21",
+        "Location": "601-060",
+        "Stock": 2
+    },
+    {
+        "PartID": "BHT29007.24",
+        "Description": "Relay Phoenix Contact 24V, 1W, 6A MR- 24DC/21",
+        "Location": "601-060",
+        "Stock": 2
+    },
+    {
+        "PartID": "BHT29010.16",
+        "Description": "Pressure Transmitter OEM BHT 0-1 Bar",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "DRAGON-011",
+        "Description": "Large & Small Valve O-Ring",
+        "Location": "601-060",
+        "Stock": 4
+    },
+    {
+        "PartID": "FUGBI0201-1",
+        "Description": "Biological Indicator Steam 20 Minute (50)",
+        "Location": "601-060",
+        "Stock": 300
+    },
+    {
+        "PartID": "GET027",
+        "Description": "Gasket Door Ge 660 X 660",
+        "Location": "601-060",
+        "Stock": 2
+    },
+    {
+        "PartID": "GET037",
+        "Description": "Gasket Door Ge 660 X 900",
+        "Location": "601-060",
+        "Stock": 7
+    },
+    {
+        "PartID": "LK-N62",
+        "Description": "Oil Vacuum Pump 5 Litre Container",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "LK-S120",
+        "Description": "Carbon Charcoal Refill",
+        "Location": "601-060",
+        "Stock": 0
+    },
+    {
+        "PartID": "LK13-S22",
+        "Description": "Filtering Core Oil And Gas Separator (Corn Large)",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "MAL822254",
+        "Description": "Main Control Board",
+        "Location": "601-MAL",
+        "Stock": 1
+    },
+    {
+        "PartID": "MAL822491",
+        "Description": "Element 13.6Kw 2 BSP",
+        "Location": "601-601",
+        "Stock": 1
+    },
+    {
+        "PartID": "MAL822521",
+        "Description": "Gasket Element 2 BSP",
+        "Location": "601-601",
+        "Stock": 1
+    },
+    {
+        "PartID": "MD100-1",
+        "Description": "Seal Check suitable for steam sterilization (validation only)",
+        "Location": "601-060",
+        "Stock": 250
+    },
+    {
+        "PartID": "PLIQ2908305",
+        "Description": "Touch Screen 7\" IQ5 & IQ6 both Clean/Unclean Side",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "PLIQ2910220",
+        "Description": "Door gasket IQ6",
+        "Location": "601-060",
+        "Stock": 2
+    },
+    {
+        "PartID": "PLIQ2918059",
+        "Description": "Coupling assembly IQ5 IQ6",
+        "Location": "601-020",
+        "Stock": 2
+    },
+    {
+        "PartID": "PLIQ7603650",
+        "Description": "Transformer 200-230-240V/ 11-22V 65VA",
+        "Location": "601-060",
+        "Stock": 2
+    },
+    {
+        "PartID": "PLIQ7607497",
+        "Description": "Transformer 200-230-240-440V",
+        "Location": "601-060",
+        "Stock": 1
+    },
+    {
+        "PartID": "PR26100400-1",
+        "Description": "Soil test for Washer disinfector testing (6) - Validation Only",
+        "Location": "601-060",
+        "Stock": 18
+    },
+    {
+        "PartID": "PR26100400-1",
+        "Description": "Soil test for Washer disinfector testing (6) - Validation Only",
+        "Location": "601-060",
+        "Stock": 18
+    },
+    {
+        "PartID": "PR26923300-1",
+        "Description": "ProExpose Short Swab Protein Test 75mm Swab (validation only)",
+        "Location": "601-060",
+        "Stock": 120
+    },
+    {
+        "PartID": "RANGER11",
+        "Description": "Printer resin roll to suit Ranger10 printer",
+        "Location": "601-601",
+        "Stock": 7
+    }
+];
+    // Merge base with any user-added items from localStorage
+    (function(){
+        var extras = [];
+        try { extras = JSON.parse(localStorage.getItem('mins_601_inv')) || []; } catch(e) {}
+        window._inv601Data = window._inv601Base.slice();
+        extras.forEach(function(e){
+            if (!window._inv601Data.find(function(b){ return b.PartID===e.PartID && b.Location===e.Location; }))
+                window._inv601Data.push(e);
+        });
+    })();
+
+    function saveInv601() {
+        // Only persist user-added items (not base data)
+        var extras = window._inv601Data.filter(function(item){
+            return !window._inv601Base.find(function(b){ return b.PartID===item.PartID && b.Location===item.Location; });
+        });
+        try { localStorage.setItem('mins_601_inv', JSON.stringify(extras)); } catch(e) {}
+        document.getElementById('b-inv601').innerText = window._inv601Data.length || 0;
+    }
+
+    function addNewInv601() {
+        // Re-use pan edit modal but wired for inv601
+        const modal = document.getElementById('editPanModal');
+        modal.querySelector('h3').innerHTML = '<i class="ph-fill ph-warehouse" style="color:#6366f1;"></i> Add 601 Inventory Item';
+        document.getElementById('editPanSN').value    = '';
+        document.getElementById('editPanLoc').value   = '';
+        document.getElementById('editPanBlock').value = '';
+        document.getElementById('editPanDesc').value  = '';
+        document.getElementById('editPanLvl').value   = '';
+        document.getElementById('editPanRoom').value  = '';
+        document.getElementById('editPanComments').value = '';
+        modal.dataset.inv601Mode = 'add';
+        modal.classList.add('active');
+    }
+
+    function openInv601EditModal(item) {
+        const modal = document.getElementById('editPanModal');
+        modal.querySelector('h3').innerHTML = '<i class="ph-fill ph-warehouse" style="color:#6366f1;"></i> Edit 601 Inventory Item';
+        document.getElementById('editPanSN').value    = item['Unit S/N']  || '';
+        document.getElementById('editPanLoc').value   = item['Location']  || '';
+        document.getElementById('editPanBlock').value = item['Block']     || '';
+        document.getElementById('editPanDesc').value  = item['Description/Ward'] || '';
+        document.getElementById('editPanLvl').value   = item['Level']     || '';
+        document.getElementById('editPanRoom').value  = item['Room']      || '';
+        document.getElementById('editPanComments').value = item['Comments'] || '';
+        modal.dataset.inv601Mode  = 'edit';
+        modal.dataset.inv601Key   = item['Unit S/N'] || '';
+        modal.classList.add('active');
+    }
+
+    // Override savePanEdit to handle both pan and inv601
+    const _origSavePanEdit = window.savePanEdit;
+    window.savePanEdit = function() {
+        const modal = document.getElementById('editPanModal');
+        if (!modal.dataset.inv601Mode) { _origSavePanEdit && _origSavePanEdit(); return; }
+
+        const newItem = {
+            'Unit S/N':         document.getElementById('editPanSN').value.trim(),
+            'Location':         document.getElementById('editPanLoc').value.trim(),
+            'Block':            document.getElementById('editPanBlock').value.trim(),
+            'Description/Ward': document.getElementById('editPanDesc').value.trim(),
+            'Level':            document.getElementById('editPanLvl').value.trim(),
+            'Room':             document.getElementById('editPanRoom').value.trim(),
+            'Comments':         document.getElementById('editPanComments').value.trim()
+        };
+        if (!newItem['Unit S/N']) { alert('Unit S/N is required'); return; }
+
+        if (modal.dataset.inv601Mode === 'add') {
+            window._inv601Data.push(newItem);
+        } else {
+            const idx = window._inv601Data.findIndex(x => x['Unit S/N'] === modal.dataset.inv601Key);
+            if (idx !== -1) window._inv601Data[idx] = newItem;
+        }
+
+        delete modal.dataset.inv601Mode;
+        delete modal.dataset.inv601Key;
+        saveInv601();
+        modal.classList.remove('active');
+
+        if (activeMode === 'inv601') openMode('inv601');
+    };
+
+    // Override confirmDeletePan to handle inv601 too
+    const _origConfirmDeletePan = window.confirmDeletePan;
+    window.confirmDeletePan = function(item, cardEl) {
+        if (activeMode !== 'inv601') { _origConfirmDeletePan && _origConfirmDeletePan(item, cardEl); return; }
+        if (!confirm('Delete this 601 Inventory item?')) return;
+        window._inv601Data = window._inv601Data.filter(x => x['Unit S/N'] !== item['Unit S/N']);
+        saveInv601();
+        if (cardEl) cardEl.remove();
+        openMode('inv601');
+    };
+
+    // Wire long-press action sheet for inv601: use the same action sheet but call inv601 handlers
+    const _origHandleAction = window.handleActionSheet;
 
     // ── Long-press (3 sec hold) logic ────────────────────────────────
     let editTarget = null;
@@ -1045,7 +3753,8 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         document.getElementById('partActionSheet').classList.remove('active');
         if (!actionTarget) return;
         if (actionMode === 'pan') {
-            openPanEditModal(actionTarget);
+            if (activeMode === 'inv601') openInv601EditModal(actionTarget);
+            else openPanEditModal(actionTarget);
         } else {
             openEditModal(actionTarget);
         }
@@ -1245,7 +3954,8 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
     // ── Add New handlers ────────────────────────────────────────────
     function handleAddNew() {
         if (currentLocalMode === 'pan') {
-            addNewPan();
+            if (activeMode === 'inv601') addNewInv601();
+            else addNewPan();
         } else {
             addNewPart();
         }
@@ -1382,22 +4092,95 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
             `;
         }
         else if(type === 'time') {
-            document.getElementById('secTitle').innerText = "Time Calculator";
-            c.innerHTML = `
-                <div class="calc-panel">
-                    <div class="calc-input-group">
-                        <div style="flex:1">
-                            <label style="font-size:0.8rem; font-weight:700; color:var(--text-muted);">Start Time</label>
-                            <input type="time" id="time1" class="calc-input" style="width:100%" oninput="doTimeCalc()">
+             document.getElementById('secTitle').innerText = "Clock Calculator";
+             c.innerHTML = `
+                <style>
+                    .cc-header{background:linear-gradient(135deg,#1a237e,#3949ab);border-radius:16px;padding:20px;color:white;text-align:center;margin-bottom:20px;box-shadow:0 6px 20px rgba(26,35,126,0.3);}
+                    .cc-result{font-size:1.6rem;font-weight:900;font-family:'Outfit',sans-serif;letter-spacing:-0.5px;}
+                    .cc-result-lbl{font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:2px;opacity:0.7;margin-bottom:6px;}
+                    .cc-row{background:var(--surface);border:1.5px solid #e2e8f0;border-radius:16px;padding:14px 16px;margin-bottom:14px;}
+                    .cc-row-label{font-size:0.7rem;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;display:flex;align-items:center;gap:5px;}
+                    .cc-spinners{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px;}
+                    .cc-spinner{display:flex;flex-direction:column;align-items:center;gap:5px;}
+                    .cc-spinner-lbl{font-size:0.65rem;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;}
+                    .cc-spin-btn{background:#e8eef7;border:none;border-radius:10px;width:100%;padding:10px 0;font-size:1.1rem;font-weight:900;color:#334155;cursor:pointer;font-family:'Inter',sans-serif;transition:background 0.12s,transform 0.1s;line-height:1;}
+                    .cc-spin-btn:active{background:#bfdbfe;transform:scale(0.93);}
+                    .cc-spin-val{font-size:1.55rem;font-weight:900;font-family:'Outfit',sans-serif;color:#1e293b;background:#f1f5f9;border-radius:12px;width:100%;text-align:center;padding:8px 0;letter-spacing:3px;}
+                    .cc-now{width:100%;background:#1e293b;color:white;border:none;border-radius:10px;padding:12px;font-size:0.9rem;font-weight:800;cursor:pointer;font-family:'Inter',sans-serif;letter-spacing:2px;transition:background 0.15s;}
+                    .cc-now:active{background:#334155;}
+                </style>
+                <div class="cc-header">
+                    <div class="cc-result-lbl">Clock Calculator</div>
+                    <div class="cc-result" id="ccResult">0 hrs. 0 min. 0 sec</div>
+                </div>
+                <div class="cc-row">
+                    <div class="cc-row-label"><i class="ph-fill ph-play-circle" style="color:#3949ab"></i> Start Time</div>
+                    <div class="cc-spinners">
+                        <div class="cc-spinner">
+                            <div class="cc-spinner-lbl">Hr</div>
+                            <button class="cc-spin-btn" onclick="ccStep('sh',-1)">&#9650;</button>
+                            <div class="cc-spin-val" id="sh">00</div>
+                            <button class="cc-spin-btn" onclick="ccStep('sh',1)">&#9660;</button>
                         </div>
-                        <div style="flex:1">
-                            <label style="font-size:0.8rem; font-weight:700; color:var(--text-muted);">End Time</label>
-                            <input type="time" id="time2" class="calc-input" style="width:100%" oninput="doTimeCalc()">
+                        <div class="cc-spinner">
+                            <div class="cc-spinner-lbl">Min</div>
+                            <button class="cc-spin-btn" onclick="ccStep('sm',-1)">&#9650;</button>
+                            <div class="cc-spin-val" id="sm">00</div>
+                            <button class="cc-spin-btn" onclick="ccStep('sm',1)">&#9660;</button>
+                        </div>
+                        <div class="cc-spinner">
+                            <div class="cc-spinner-lbl">Sec</div>
+                            <button class="cc-spin-btn" onclick="ccStep('ss',-1)">&#9650;</button>
+                            <div class="cc-spin-val" id="ss">00</div>
+                            <button class="cc-spin-btn" onclick="ccStep('ss',1)">&#9660;</button>
                         </div>
                     </div>
-                    <div class="calc-res-circle" style="border-color:var(--indigo)"><div class="calc-res-val" id="timeRes">--</div><div class="calc-res-lbl">Duration</div></div>
+                    <button class="cc-now" onclick="ccNow('s')">NOW</button>
                 </div>
-            `;
+                <div class="cc-row">
+                    <div class="cc-row-label"><i class="ph-fill ph-stop-circle" style="color:#ef4444"></i> End Time</div>
+                    <div class="cc-spinners">
+                        <div class="cc-spinner">
+                            <div class="cc-spinner-lbl">Hr</div>
+                            <button class="cc-spin-btn" onclick="ccStep('eh',-1)">&#9650;</button>
+                            <div class="cc-spin-val" id="eh">00</div>
+                            <button class="cc-spin-btn" onclick="ccStep('eh',1)">&#9660;</button>
+                        </div>
+                        <div class="cc-spinner">
+                            <div class="cc-spinner-lbl">Min</div>
+                            <button class="cc-spin-btn" onclick="ccStep('em',-1)">&#9650;</button>
+                            <div class="cc-spin-val" id="em">00</div>
+                            <button class="cc-spin-btn" onclick="ccStep('em',1)">&#9660;</button>
+                        </div>
+                        <div class="cc-spinner">
+                            <div class="cc-spinner-lbl">Sec</div>
+                            <button class="cc-spin-btn" onclick="ccStep('es',-1)">&#9650;</button>
+                            <div class="cc-spin-val" id="es">00</div>
+                            <button class="cc-spin-btn" onclick="ccStep('es',1)">&#9660;</button>
+                        </div>
+                    </div>
+                    <button class="cc-now" onclick="ccNow('e')">NOW</button>
+                </div>
+             `;
+             window._cc = {sh:0,sm:0,ss:0,eh:0,em:0,es:0};
+             window.ccStep = function(field,dir){
+                 var max = field.endsWith('h') ? 24 : 60;
+                 _cc[field] = (_cc[field]+dir+max)%max;
+                 document.getElementById(field).textContent = String(_cc[field]).padStart(2,'0');
+                 ccCalc();
+             };
+             window.ccNow = function(p){
+                 var n = new Date();
+                 _cc[p+'h']=n.getHours(); _cc[p+'m']=n.getMinutes(); _cc[p+'s']=n.getSeconds();
+                 ['h','m','s'].forEach(function(f){ document.getElementById(p+f).textContent=String(_cc[p+f]).padStart(2,'0'); });
+                 ccCalc();
+             };
+             window.ccCalc = function(){
+                 var diff=(_cc.eh*3600+_cc.em*60+_cc.es)-(_cc.sh*3600+_cc.sm*60+_cc.ss);
+                 if(diff<0) diff+=86400;
+                 var h=Math.floor(diff/3600),m=Math.floor((diff%3600)/60),s=diff%60;
+                 document.getElementById('ccResult').textContent=h+' hrs. '+m+' min. '+s+' sec';
+             };
         }
         else if(type === 'f0a0') {
             document.getElementById('secTitle').innerText = "";
