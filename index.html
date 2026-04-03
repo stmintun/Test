@@ -35,6 +35,31 @@
     </div>
 </div>
 
+<!-- In-App PDF Viewer -->
+<div id="pdfViewerModal" style="display:none; position:fixed; inset:0; z-index:10000; background:#1e1e2e; flex-direction:column;">
+    <!-- Header -->
+    <div style="background:#0f0f1a; padding:12px 16px; display:flex; align-items:center; justify-content:space-between; gap:10px; flex-shrink:0;">
+        <button id="pdfViewerClose" style="background:rgba(255,255,255,0.1); border:none; color:white; border-radius:50%; width:38px; height:38px; font-size:1.1rem; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+            <i class="ph-bold ph-x"></i>
+        </button>
+        <div id="pdfViewerName" style="color:white; font-weight:700; font-size:0.9rem; font-family:'Inter',sans-serif; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:center;"></div>
+        <button id="pdfViewerDownload" style="background:rgba(99,102,241,0.3); border:1px solid rgba(99,102,241,0.5); color:#a5b4fc; border-radius:10px; padding:8px 14px; font-size:0.8rem; font-weight:700; cursor:pointer; font-family:'Inter',sans-serif; flex-shrink:0; display:flex; align-items:center; gap:5px;">
+            <i class="ph-bold ph-download-simple"></i> Save
+        </button>
+    </div>
+    <!-- PDF iframe -->
+    <iframe id="pdfViewerFrame" style="flex:1; width:100%; border:none; background:white;" src="about:blank"></iframe>
+    <!-- Fallback for browsers that cant display PDFs inline -->
+    <div id="pdfViewerFallback" style="display:none; flex:1; align-items:center; justify-content:center; flex-direction:column; gap:16px; padding:30px; text-align:center;">
+        <i class="ph-fill ph-file-pdf" style="font-size:4rem; color:#fca5a5;"></i>
+        <div style="color:white; font-size:1rem; font-weight:700; font-family:'Inter',sans-serif;" id="pdfFallbackName"></div>
+        <div style="color:#94a3b8; font-size:0.85rem; font-family:'Inter',sans-serif;">Your browser could not display the PDF inline.</div>
+        <button id="pdfFallbackDownload" style="background:#6366f1; color:white; border:none; border-radius:12px; padding:14px 28px; font-size:0.95rem; font-weight:800; cursor:pointer; font-family:'Inter',sans-serif; display:flex; align-items:center; gap:8px;">
+            <i class="ph-bold ph-download-simple"></i> Download PDF
+        </button>
+    </div>
+</div>
+
 <!-- QR Scanner Modal -->
 <div id="qrScannerModal" style="display:none; position:fixed; inset:0; z-index:9999; background:#000;">
     <div style="position:absolute; top:0; left:0; right:0; padding:16px 20px; display:flex; align-items:center; justify-content:space-between; z-index:10001; background:linear-gradient(180deg,rgba(0,0,0,0.7),transparent);">
@@ -501,7 +526,7 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
             </div>
         </div>
         <div style="text-align:center; padding: 18px 0 28px; color:#cbd5e1; font-size:0.65rem; font-family:'Inter',sans-serif; font-weight:600; letter-spacing:2px; text-transform:uppercase; user-select:none;">
-            MIN'S DATABASE PRO &nbsp;&middot;&nbsp; Rev 2.9.0 &nbsp;&middot;&nbsp; Apr 2026
+            MIN'S DATABASE PRO &nbsp;&middot;&nbsp; Rev 2.9.1 &nbsp;&middot;&nbsp; Apr 2026
         </div>
     </main>
 
@@ -4001,21 +4026,71 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
                 const pdf = e.target.result;
                 if (!pdf || !pdf.blob) { alert('PDF not found. Try re-uploading the file.'); return; }
                 var blob = pdf.blob;
-                // If blob is an ArrayBuffer, convert it
                 if (blob instanceof ArrayBuffer) {
                     blob = new Blob([blob], { type: 'application/pdf' });
                 }
-                // If it's not already a Blob, try wrapping
                 if (!(blob instanceof Blob)) {
                     try { blob = new Blob([blob], { type: 'application/pdf' }); } catch(ex) {
                         alert('Cannot open this PDF. Try re-uploading.'); return;
                     }
                 }
-                const url = URL.createObjectURL(blob);
-                window.open(url, '_blank');
-                setTimeout(function() { URL.revokeObjectURL(url); }, 120000);
+                openInAppPdfViewer(blob, pdf.name || 'document.pdf');
             };
         });
+    }
+
+    var _pdfBlobUrl = null;
+
+    function openInAppPdfViewer(blob, name) {
+        // Revoke any previous URL
+        if (_pdfBlobUrl) { try { URL.revokeObjectURL(_pdfBlobUrl); } catch(e) {} }
+        _pdfBlobUrl = URL.createObjectURL(blob);
+
+        var modal    = document.getElementById('pdfViewerModal');
+        var frame    = document.getElementById('pdfViewerFrame');
+        var fallback = document.getElementById('pdfViewerFallback');
+        var nameEl   = document.getElementById('pdfViewerName');
+        var dlBtn    = document.getElementById('pdfViewerDownload');
+        var fbDlBtn  = document.getElementById('pdfFallbackDownload');
+        var fbName   = document.getElementById('pdfFallbackName');
+
+        nameEl.textContent  = name;
+        fbName.textContent  = name;
+        frame.style.display = 'block';
+        fallback.style.display = 'none';
+        modal.style.display = 'flex';
+
+        // Load PDF into iframe
+        frame.src = _pdfBlobUrl;
+
+        // Detect if iframe failed (common on iOS Safari for PDFs)
+        var loaded = false;
+        frame.onload = function() { loaded = true; };
+        setTimeout(function() {
+            if (!loaded) {
+                frame.style.display = 'none';
+                fallback.style.display = 'flex';
+            }
+        }, 3000);
+
+        // Download / Save buttons
+        function doDownload() {
+            var a = document.createElement('a');
+            a.href = _pdfBlobUrl;
+            a.download = name;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+        dlBtn.onclick   = doDownload;
+        fbDlBtn.onclick = doDownload;
+
+        // Close button
+        document.getElementById('pdfViewerClose').onclick = function() {
+            modal.style.display = 'none';
+            frame.src = 'about:blank';
+            if (_pdfBlobUrl) { try { URL.revokeObjectURL(_pdfBlobUrl); } catch(e) {} _pdfBlobUrl = null; }
+        };
     }
 
     function deleteDiagPdfIDB(pdfId, mode, folderId) {
