@@ -526,7 +526,7 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
             </div>
         </div>
         <div style="text-align:center; padding: 18px 0 28px; color:#cbd5e1; font-size:0.65rem; font-family:'Inter',sans-serif; font-weight:600; letter-spacing:2px; text-transform:uppercase; user-select:none;">
-            MIN'S DATABASE PRO &nbsp;&middot;&nbsp; Rev 2.9.1 &nbsp;&middot;&nbsp; Apr 2026
+            MIN'S DATABASE PRO &nbsp;&middot;&nbsp; Rev 3.0.0 &nbsp;&middot;&nbsp; Apr 2026
         </div>
     </main>
 
@@ -559,6 +559,7 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
 
 <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none;" onchange="processPhoto(event)">
 <input type="file" id="diagPdfInput" accept="application/pdf" multiple style="display:none;" onchange="processDiagPdfs(event)">
+<input type="file" id="vaultFileInput" accept="*/*" multiple style="display:none;" onchange="processVaultFiles(event)">
 
 <script>
     // In actual usage, db is loaded from data.js. If missing, define fallback.
@@ -5682,27 +5683,8 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         document.getElementById('secTitle').innerText = "Folder Details";
         const c = document.getElementById('secContent');
         
-        let filesHtml = '';
-        if (folder.files && folder.files.length > 0) {
-            folder.files.forEach((file, index) => {
-                filesHtml += `
-                    <div class="data-card" style="display:flex; align-items:center; justify-content:space-between; cursor:default; margin-top:10px;">
-                        <div style="flex:1;" onclick="viewFileFromFolder('${id}', ${index})">
-                            <div class="data-title" style="color:var(--primary); cursor:pointer;"><i class="ph-bold ph-file" style="margin-right:5px;"></i> ${file.name}</div>
-                            <div class="data-sub">Size: ${(file.data.length / 1024).toFixed(1)} KB</div>
-                        </div>
-                        <button class="btn btn-danger" style="padding:10px 15px; border-radius: 8px;" onclick="deleteFileFromFolder('${id}', ${index})"><i class="ph-bold ph-trash"></i></button>
-                    </div>
-                `;
-            });
-        } else {
-            filesHtml = `
-                <div class="empty-state" style="padding:30px 10px; margin-top:10px;">
-                    <i class="ph-fill ph-file empty-icon" style="color:var(--text-muted); font-size:2rem; margin-bottom:10px;"></i>
-                    <p style="font-size:0.9rem; color:var(--text-muted);">No files uploaded yet.</p>
-                </div>
-            `;
-        }
+        // Files rendered async from IDB after HTML is set
+        const filesHtml = '<div id="vaultFileList"><div style="text-align:center;padding:20px;color:#94a3b8;font-size:0.85rem;"><i class="ph-fill ph-spinner" style="font-size:1.5rem;"></i><br>Loading files...</div></div>';
 
 
         // Build notes preview (120 chars)
@@ -5770,11 +5752,12 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
 
             <div style="background:var(--card-bg); padding:20px; border-radius:var(--radius-lg); margin-bottom:16px; box-shadow:var(--shadow-sm);">
                 <div style="font-size:0.68rem;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;display:flex;align-items:center;gap:5px;">
-                    <i class="ph-fill ph-files" style="color:var(--primary);"></i> Attached Files (${(folder.files||[]).length})
+                    <i class="ph-fill ph-files" style="color:var(--primary);"></i> Files <span class="vaultFileCount">(loading...)</span>
                 </div>
-                <input type="file" id="folderFileUpload" class="vault-input" style="padding:10px; border:1px solid #e2e8f0; border-radius:8px; width:100%; box-sizing:border-box; background:#f8fafc; margin-bottom:10px;">
-                <button class="btn btn-primary" style="width:100%; padding:12px; font-weight:bold;" onclick="uploadFileToFolder('${id}')">
-                    <i class="ph-bold ph-upload-simple"></i> Upload File
+                <input type="file" id="folderFileUpload" style="display:none;">
+                <button class="btn btn-primary" style="width:100%; padding:12px; font-weight:bold;"
+                    onclick="window._vaultUploadFolderId='${id}'; document.getElementById('vaultFileInput').value=''; document.getElementById('vaultFileInput').click();">
+                    <i class="ph-bold ph-upload-simple"></i> Upload Files
                 </button>
                 <div style="margin-top:16px;">${filesHtml}</div>
             </div>
@@ -5784,6 +5767,11 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
                 <button class="btn btn-danger" style="flex:1" onclick="deleteFolder('${id}')"><i class="ph-bold ph-trash"></i> Delete Folder</button>
             </div>
         `;
+        // Wire IDB file loader after DOM is ready
+        setTimeout(function() {
+            loadVaultFiles(id);
+            document.getElementById('secTitle').innerText = folder.name || 'Folder';
+        }, 0);
     }
 
     function updateFolderData() {
@@ -5797,68 +5785,146 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
                 if (startEl) folder.startDate = startEl.value;
                 if (expiryEl) folder.expiry = expiryEl.value;
             }
-            if (notesEl) folder.notes = notesEl.value;
             
             saveDrive();
         }
     }
 
-    function uploadFileToFolder(folderId) {
-        const fileInput = document.getElementById('folderFileUpload');
-        if (!fileInput.files.length) return alert("Please select a file first.");
-        const file = fileInput.files[0];
-        
-        const folder = masterDrive[currentDriveCat].find(f => f.id === folderId);
-        if(!folder) return;
-        if(!folder.files) folder.files = [];
 
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            try {
-                folder.files.push({
-                    name: file.name,
-                    type: file.type || 'application/octet-stream',
-                    data: e.target.result
-                });
-                saveDrive();
-                viewFolder(folderId); // Re-render to show new file
-            } catch (err) {
-                alert("File too large to store in local memory! Try a smaller file.");
+    // ── Vault Drive IDB File System ───────────────────────────────
+    var _vaultFileIDB = null;
+    var _vaultUploadFolderId = null;
+
+    function openVaultIDB(cb) {
+        if (_vaultFileIDB) { cb(_vaultFileIDB); return; }
+        var req = indexedDB.open('mins_vault_idb', 1);
+        req.onupgradeneeded = function(e) {
+            var db = e.target.result;
+            if (!db.objectStoreNames.contains('files')) {
+                var store = db.createObjectStore('files', { keyPath: 'id' });
+                store.createIndex('by_folder', 'folderId', { unique: false });
             }
         };
-        reader.readAsDataURL(file);
+        req.onsuccess = function(e) { _vaultFileIDB = e.target.result; cb(_vaultFileIDB); };
+        req.onerror   = function()  { alert('Vault storage unavailable.'); };
     }
-    
-    function deleteFileFromFolder(folderId, fileIndex) {
-        if (confirm("Are you sure you want to delete this file?")) {
-            const folder = masterDrive[currentDriveCat].find(f => f.id === folderId);
-            if(folder && folder.files) {
-                folder.files.splice(fileIndex, 1);
-                saveDrive();
-                viewFolder(folderId);
-            }
-        }
+
+    function processVaultFiles(event) {
+        var folderId = window._vaultUploadFolderId;
+        if (!folderId) return;
+        var files = Array.from(event.target.files);
+        if (!files.length) return;
+        var done = 0;
+        files.forEach(function(file) {
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                var blob = new Blob([e.target.result], { type: file.type || 'application/octet-stream' });
+                var id = folderId + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 5);
+                openVaultIDB(function(db) {
+                    var tx = db.transaction('files', 'readwrite');
+                    tx.objectStore('files').put({
+                        id: id,
+                        folderId: folderId,
+                        name: file.name,
+                        type: file.type || 'application/octet-stream',
+                        size: file.size,
+                        date: new Date().toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric' }),
+                        blob: blob
+                    });
+                    tx.oncomplete = function() {
+                        done++;
+                        if (done === files.length) loadVaultFiles(folderId);
+                    };
+                    tx.onerror = function() { alert('Error saving: ' + file.name); };
+                });
+            };
+            reader.readAsArrayBuffer(file);
+        });
+        event.target.value = '';
     }
-    
-    function viewFileFromFolder(folderId, fileIndex) {
-        const folder = masterDrive[currentDriveCat].find(f => f.id === folderId);
-        if(!folder || !folder.files || !folder.files[fileIndex]) return;
-        const file = folder.files[fileIndex];
-        
-        let fileWindow = window.open("");
-        if(fileWindow) {
-            if (file.type.startsWith('image/')) {
-                fileWindow.document.write("<body style='margin:0; background:#0f172a; display:flex; justify-content:center; align-items:center; height:100vh;'><img src='" + file.data + "' style='max-width:100%; max-height:100%; object-fit:contain;'></body>");
-            } else if (file.type === 'application/pdf') {
-                fileWindow.document.write("<iframe width='100%' height='100%' src='" + file.data + "' style='border:none; margin:0; padding:0; overflow:hidden;'></iframe>");
-                fileWindow.document.body.style.margin = "0";
-            } else {
-                fileWindow.document.write("<body style='margin:0; padding:20px; font-family:sans-serif;'><h3>Cannot preview this file type ("+file.type+").</h3><a href='" + file.data + "' download='" + file.name + "'>Click here to download it</a></body>");
-            }
-        } else {
-            alert("Please allow popups for this app to view the file.");
-        }
+
+    function loadVaultFiles(folderId) {
+        openVaultIDB(function(db) {
+            var results = [];
+            var tx = db.transaction('files', 'readonly');
+            var idx = tx.objectStore('files').index('by_folder');
+            idx.openCursor(IDBKeyRange.only(folderId)).onsuccess = function(e) {
+                var c = e.target.result;
+                if (c) { results.push(c.value); c.continue(); }
+            };
+            tx.oncomplete = function() {
+                var el = document.getElementById('vaultFileList');
+                if (!el) return;
+                // Update file count in header
+                var hdr = el.previousElementSibling;
+                if (hdr) {
+                    var span = hdr.querySelector('.vaultFileCount');
+                    if (span) span.textContent = '(' + results.length + ')';
+                }
+                if (results.length === 0) {
+                    el.innerHTML = '<div style="text-align:center;padding:24px;color:#94a3b8;font-size:0.85rem;background:#f8fafc;border:1.5px dashed #e2e8f0;border-radius:12px;"><i class="ph-fill ph-files" style="font-size:2rem;display:block;margin-bottom:8px;color:#cbd5e1;"></i>No files uploaded yet</div>';
+                } else {
+                    el.innerHTML = results.map(function(f) {
+                        var icon = f.type && f.type.startsWith('image/') ? 'ph-image' : (f.type === 'application/pdf' ? 'ph-file-pdf' : 'ph-file');
+                        var iconColor = f.type === 'application/pdf' ? '#ef4444' : (f.type && f.type.startsWith('image/') ? '#22c55e' : '#6366f1');
+                        return '<div style="display:flex;align-items:center;gap:12px;padding:13px 14px;background:white;border:1.5px solid #e2e8f0;border-radius:12px;margin-bottom:8px;cursor:pointer;" onclick="viewVaultFile(\'' + f.id + '\')">' +
+                            '<i class="ph-fill ' + icon + '" style="font-size:1.8rem;color:' + iconColor + ';flex-shrink:0;"></i>' +
+                            '<div style="flex:1;min-width:0;">' +
+                                '<div style="font-weight:700;font-size:0.9rem;color:#1e293b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + f.name + '</div>' +
+                                '<div style="font-size:0.7rem;color:#94a3b8;margin-top:3px;">' + (f.size ? (f.size/1024).toFixed(0) + ' KB' : '') + (f.date ? ' &nbsp;·&nbsp; ' + f.date : '') + '</div>' +
+                            '</div>' +
+                            '<button onclick="event.stopPropagation();deleteVaultFile(\'' + f.id + '\',\'' + folderId + '\')" style="background:#fef2f2;border:1px solid #fecaca;border-radius:9px;padding:7px 9px;color:#ef4444;cursor:pointer;font-size:0.85rem;flex-shrink:0;"><i class="ph-bold ph-trash"></i></button>' +
+                        '</div>';
+                    }).join('');
+                }
+            };
+        });
     }
+
+    function viewVaultFile(fileId) {
+        openVaultIDB(function(db) {
+            db.transaction('files', 'readonly').objectStore('files').get(fileId).onsuccess = function(e) {
+                var f = e.target.result;
+                if (!f || !f.blob) { alert('File not found. Try re-uploading.'); return; }
+                var blob = f.blob instanceof Blob ? f.blob : new Blob([f.blob], { type: f.type || 'application/octet-stream' });
+                if (f.type && f.type.startsWith('image/')) {
+                    // Images: open in in-app image viewer
+                    var url = URL.createObjectURL(blob);
+                    var modal = document.getElementById('pdfViewerModal');
+                    var frame = document.getElementById('pdfViewerFrame');
+                    document.getElementById('pdfViewerName').textContent = f.name;
+                    document.getElementById('pdfViewerFallback').style.display = 'none';
+                    frame.style.display = 'block';
+                    frame.src = url;
+                    modal.style.display = 'flex';
+                    document.getElementById('pdfViewerClose').onclick = function() {
+                        modal.style.display = 'none'; frame.src = 'about:blank'; URL.revokeObjectURL(url);
+                    };
+                    document.getElementById('pdfViewerDownload').onclick = function() {
+                        var a = document.createElement('a'); a.href = url; a.download = f.name;
+                        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                    };
+                } else {
+                    // PDFs and other files: use in-app viewer
+                    openInAppPdfViewer(blob, f.name);
+                }
+            };
+        });
+    }
+
+    function deleteVaultFile(fileId, folderId) {
+        openVaultIDB(function(db) {
+            var tx = db.transaction('files', 'readwrite');
+            tx.objectStore('files').delete(fileId);
+            tx.oncomplete = function() { loadVaultFiles(folderId); };
+        });
+    }
+
+    // Keep old functions as no-ops to avoid errors from any stale references
+    function uploadFileToFolder(folderId) {}
+    function deleteFileFromFolder(folderId, fileIndex) {}
+    function viewFileFromFolder(folderId, fileIndex) {}
+
 
     function deleteFolder(id) {
         if(confirm("Are you sure you want to delete this folder and its contents?")) {
