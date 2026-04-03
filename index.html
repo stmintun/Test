@@ -490,6 +490,15 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
                     <button id="mainSearchClear" onclick="clearMainSearch()" style="display:none;position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:#94a3b8;font-size:1.1rem;cursor:pointer;padding:0;line-height:1;"><i class="ph-bold ph-x-circle"></i></button>
                 </div>
             </div>
+            <!-- Daily Bible Verse -->
+            <div id="dailyVerseCard" style="background:linear-gradient(135deg,#1e293b,#312e81);border-radius:16px;padding:14px 16px;margin-bottom:20px;position:relative;overflow:hidden;">
+                <div style="position:absolute;top:-10px;right:-10px;font-size:5rem;opacity:0.06;color:white;font-family:serif;line-height:1;">“</div>
+                <div style="font-size:0.6rem;font-weight:800;color:#a5b4fc;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px;display:flex;align-items:center;gap:5px;">
+                    <i class="ph-fill ph-book-open"></i> Verse of the Day
+                </div>
+                <div id="dailyVerseText" style="color:white;font-size:0.88rem;line-height:1.6;font-family:'Inter',sans-serif;font-style:italic;margin-bottom:6px;"></div>
+                <div id="dailyVerseRef" style="color:#a5b4fc;font-size:0.72rem;font-weight:700;font-family:'Outfit',sans-serif;letter-spacing:0.5px;text-align:right;"></div>
+            </div>
             <h2 class="section-title"><span><i class="ph-fill ph-map-trifold"></i> Location</span></h2>
             <div class="dashboard" style="margin-bottom:25px;">
                 <div class="menu-card card-danger" onclick="openMode('out')">
@@ -611,7 +620,7 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
             </div>
         </div>
         <div style="text-align:center; padding: 18px 0 28px; color:#cbd5e1; font-size:0.65rem; font-family:'Inter',sans-serif; font-weight:600; letter-spacing:2px; text-transform:uppercase; user-select:none;">
-            MIN'S DATABASE PRO &nbsp;&middot;&nbsp; Rev 3.0.1 &nbsp;&middot;&nbsp; Apr 2026
+            MIN'S DATABASE PRO &nbsp;&middot;&nbsp; Rev 3.1.0 &nbsp;&middot;&nbsp; Apr 2026
         </div>
     </main>
 
@@ -4377,6 +4386,98 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         }
         window._notesFolderId = null;
     }
+
+    
+    // ══════════════════════════════════════════════════════════════
+    // DAILY BIBLE VERSE (Recovery Version)
+    // ══════════════════════════════════════════════════════════════
+    (function() {
+        var verses = [
+            { t: "In the beginning was the Word, and the Word was with God, and the Word was God.", r: "John 1:1" },
+            { t: "And the Word became flesh and tabernacled among us, and we beheld His glory.", r: "John 1:14" },
+            { t: "For God so loved the world that He gave His only begotten Son.", r: "John 3:16" },
+            { t: "God is Spirit, and those who worship Him must worship in spirit and truthfulness.", r: "John 4:24" },
+            { t: "I am the resurrection and the life; he who believes into Me, even if he should die, shall live.", r: "John 11:25" },
+            { t: "I am the way and the reality and the life; no one comes to the Father except through Me.", r: "John 14:6" },
+            { t: "I am the vine; you are the branches. He who abides in Me and I in him, he bears much fruit.", r: "John 15:5" },
+            { t: "The Lord is my shepherd; I will lack nothing.", r: "Psalms 23:1" },
+            { t: "Even though I walk through the valley of the shadow of death, I do not fear evil, for You are with me.", r: "Psalms 23:4" },
+            { t: "For with You is the fountain of life; in Your light we see light.", r: "Psalms 36:9" },
+            { t: "Delight yourself in Jehovah, and He will give you the requests of your heart.", r: "Psalms 37:4" },
+            { t: "My soul thirsts for God, for the living God.", r: "Psalms 42:2" },
+            { t: "Create in me a clean heart, O God, and renew a right spirit within me.", r: "Psalms 51:10" },
+            { t: "God is our refuge and strength, a help in distresses, very available.", r: "Psalms 46:1" },
+            { t: "The Lord is my light and my salvation; whom shall I fear?", r: "Psalms 27:1" },
+            { t: "How precious is Your lovingkindness, O God! The children of men take refuge in the shadow of Your wings.", r: "Psalms 36:7" },
+            { t: "Trust in Jehovah with all your heart, and do not lean upon your own understanding.", r: "Proverbs 3:5" },
+            { t: "In all your ways acknowledge Him, and He will make your paths straight.", r: "Proverbs 3:6" },
+            { t: "For I know the plans that I have for you, declares Jehovah, plans of peace and not of evil.", r: "Jeremiah 29:11" },
+            { t: "Those who wait on Jehovah will renew their strength.", r: "Isaiah 40:31" },
+            { t: "Fear not, for I am with you; be not dismayed, for I am your God.", r: "Isaiah 41:10" },
+            { t: "I can do all things in Him who empowers me.", r: "Philippians 4:13" },
+            { t: "And my God will fill your every need according to His riches in glory in Christ Jesus.", r: "Philippians 4:19" },
+            { t: "Rejoice in the Lord always; again I will say, rejoice.", r: "Philippians 4:4" },
+            { t: "The peace of God, which surpasses every man's understanding, will guard your hearts.", r: "Philippians 4:7" },
+            { t: "And grace to you and peace from God our Father and the Lord Jesus Christ.", r: "Romans 1:7" },
+            { t: "All things work together for good to those who love God.", r: "Romans 8:28" },
+            { t: "Who shall separate us from the love of Christ?", r: "Romans 8:35" },
+            { t: "For I am persuaded that neither death nor life...will be able to separate us from the love of God.", r: "Romans 8:38-39" },
+            { t: "The grace of the Lord Jesus Christ and the love of God and the fellowship of the Holy Spirit be with you all.", r: "2 Corinthians 13:14" },
+            { t: "I have been crucified with Christ; and it is no longer I who live, but it is Christ who lives in me.", r: "Galatians 2:20" },
+            { t: "But the fruit of the Spirit is love, joy, peace, long-suffering, kindness, goodness, faithfulness.", r: "Galatians 5:22" },
+            { t: "For we are His masterpiece, created in Christ Jesus for good works.", r: "Ephesians 2:10" },
+            { t: "Be filled in spirit, speaking to one another in psalms and hymns and spiritual songs.", r: "Ephesians 5:18-19" },
+            { t: "And do not be drunk with wine...but be filled in spirit.", r: "Ephesians 5:18" },
+            { t: "Finally, be empowered in the Lord and in the might of His strength.", r: "Ephesians 6:10" },
+            { t: "Christ in you, the hope of glory.", r: "Colossians 1:27" },
+            { t: "Let the word of Christ dwell in you richly in all wisdom.", r: "Colossians 3:16" },
+            { t: "Whatever you do in word or in deed, do all things in the name of the Lord Jesus.", r: "Colossians 3:17" },
+            { t: "Pray unceasingly.", r: "1 Thessalonians 5:17" },
+            { t: "In everything give thanks; for this is the will of God in Christ Jesus for you.", r: "1 Thessalonians 5:18" },
+            { t: "For God has not given us a spirit of cowardice, but of power and of love and of sobermindedness.", r: "2 Timothy 1:7" },
+            { t: "All Scripture is God-breathed and profitable for teaching, for conviction, for correction.", r: "2 Timothy 3:16" },
+            { t: "Jesus Christ is the same yesterday and today, yes, even forever.", r: "Hebrews 13:8" },
+            { t: "Let us therefore come forward with boldness to the throne of grace.", r: "Hebrews 4:16" },
+            { t: "Now faith is the substantiation of things hoped for, the conviction of things not seen.", r: "Hebrews 11:1" },
+            { t: "Let us run with endurance the race that is set before us, looking away unto Jesus.", r: "Hebrews 12:1-2" },
+            { t: "Cast all your anxiety on Him because it matters to Him concerning you.", r: "1 Peter 5:7" },
+            { t: "And God is able to make all grace abound unto you.", r: "2 Corinthians 9:8" },
+            { t: "He who has the Son has the life; he who does not have the Son of God does not have the life.", r: "1 John 5:12" },
+            { t: "Behold, I stand at the door and knock; if anyone hears My voice and opens the door, I will come in to him.", r: "Revelation 3:20" },
+            { t: "And I will give to the one who thirsts from the spring of the water of life freely.", r: "Revelation 21:6" },
+            { t: "The Spirit and the bride say, Come! And let the one who hears say, Come!", r: "Revelation 22:17" },
+            { t: "The grace of the Lord Jesus be with all the saints. Amen.", r: "Revelation 22:21" },
+            { t: "O come, let us worship and bow down; let us kneel before Jehovah our Maker.", r: "Psalms 95:6" },
+            { t: "This is the day that Jehovah has made; let us exult and rejoice in it.", r: "Psalms 118:24" },
+            { t: "Your word is a lamp to my feet and a light to my path.", r: "Psalms 119:105" },
+            { t: "I lift up my eyes to the mountains. Where does my help come from? My help comes from Jehovah.", r: "Psalms 121:1-2" },
+            { t: "Sing to Jehovah a new song; sing to Jehovah, all the earth.", r: "Psalms 96:1" },
+            { t: "For His compassions do not fail; they are new every morning; great is Your faithfulness.", r: "Lamentations 3:22-23" },
+            { t: "And they that are wise will shine like the brightness of the expanse; and they that turn many to righteousness, like the stars forever and ever.", r: "Daniel 12:3" },
+            { t: "Blessed are the pure in heart, for they shall see God.", r: "Matthew 5:8" },
+            { t: "You are the light of the world. A city situated upon a mountain cannot be hidden.", r: "Matthew 5:14" },
+            { t: "Come to Me all who toil and are burdened, and I will give you rest.", r: "Matthew 11:28" },
+            { t: "Take My yoke upon you and learn from Me, for I am meek and lowly in heart.", r: "Matthew 11:29" },
+            { t: "With men this is impossible, but with God all things are possible.", r: "Matthew 19:26" },
+            { t: "And He said to them, Go into all the world and proclaim the gospel to all the creation.", r: "Mark 16:15" },
+            { t: "For nothing will be impossible with God.", r: "Luke 1:37" },
+            { t: "For the Son of Man came to seek and save the lost.", r: "Luke 19:10" },
+            { t: "Peace I leave with you; My peace I give to you.", r: "John 14:27" },
+            { t: "These things I have spoken to you that in Me you may have peace.", r: "John 16:33" },
+            { t: "That they all may be one, even as You, Father, are in Me and I in You.", r: "John 17:21" },
+            { t: "For the wages of sin is death, but the gift of God is eternal life in Christ Jesus our Lord.", r: "Romans 6:23" },
+            { t: "There is now then no condemnation to those in Christ Jesus.", r: "Romans 8:1" },
+            { t: "For if you confess with your mouth Jesus as Lord and believe in your heart...you will be saved.", r: "Romans 10:9" },
+        ];
+
+        var now  = new Date();
+        var start = new Date(now.getFullYear(), 0, 0);
+        var day  = Math.floor((now - start) / 864e5);
+        var v    = verses[day % verses.length];
+
+        document.getElementById('dailyVerseText').textContent = '\u201c' + v.t + '\u201d';
+        document.getElementById('dailyVerseRef').textContent  = '\u2014 ' + v.r + ' (Recovery Version)';
+    })();
 
         // ── Long-press (3 sec hold) logic ────────────────────────────────
     let editTarget = null;
