@@ -252,7 +252,6 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         .hold-ring circle.ring-fill  { fill: none; stroke: var(--primary); stroke-width: 4; stroke-linecap: round;
             stroke-dasharray: 100; stroke-dashoffset: 100; transform-origin: center; transform: rotate(-90deg);
             transition: stroke-dashoffset linear; }
-
         /* ── Part Action Sheet ── */
         .part-action-overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.45); z-index: 300; display: flex; align-items: flex-end; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
         .part-action-overlay.active { opacity: 1; pointer-events: all; }
@@ -2469,6 +2468,13 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
                     t = (item.PartID || '') + ' — ' + (item.Description || '');
                 }
                 card.innerHTML = `<div class="data-title">${t}</div><div class="data-sub">${subtitle}</div><div class="hold-ring"><svg viewBox="0 0 36 36"><circle class="ring-track" cx="18" cy="18" r="15.9"/><circle class="ring-fill" cx="18" cy="18" r="15.9"/></svg></div>`;
+                // Single tap → view details (most reliable click handler)
+                (function(it, cd) {
+                    cd.addEventListener('click', function() {
+                        if (cd.classList.contains('_held')) { cd.classList.remove('_held'); return; }
+                        showDetails(it, currentLocalMode);
+                    });
+                })(item, card);
                 attachLongPress(card, item);
                 content.appendChild(card);
             } else {
@@ -2586,8 +2592,8 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         currentPartID = item.PartID || item.Code || item['Error Code'] || item['Unit S/N'] || item['Error Code / Fault Name'] || 'Unknown';
         const b = document.getElementById('modalBody');
         const isPart    = (type === 'parts' || type === 'out' || type === 'inv601');
-        const isLocMode = ['pan','blanket','washer','dryer','sterilizer'].includes(type);
-        const isErrCode = !isPart && type !== 'pan' && type !== 'inv601' && !['blanket','washer','dryer','sterilizer','heatsealer'].includes(type);
+        const isLocMode = ['pan','blanket','washer','dryer','sterilizer','heatsealer'].includes(type);
+        const isErrCode = !isPart && type !== 'inv601';
 
 
         let html = "";
@@ -2634,7 +2640,7 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         }
 
         // ── Associated Parts section (error codes only) ──────────────
-        if (isErrCode) {
+        if (isErrCode || isLocMode) {
             const errKey = [type, currentPartID].join('::');
 
             // Keyword-based auto-matches across ALL parts folders
@@ -3942,15 +3948,23 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         "Stock": 7
     }
 ];
-    // Merge base with any user-added items from localStorage
+    // Apply 601 Overrides
     (function(){
-        var extras = [];
-        try { extras = JSON.parse(localStorage.getItem('mins_601_inv')) || []; } catch(e) {}
         window._inv601Data = window._inv601Base.slice();
-        extras.forEach(function(e){
-            if (!window._inv601Data.find(function(b){ return b.PartID===e.PartID && b.Location===e.Location; }))
-                window._inv601Data.push(e);
+        // apply edits
+        window._inv601Data.forEach(p => {
+            const key = p.PartID + '::' + p.Location;
+            if (inv601Edits[key]) {
+                p.PartID = inv601Edits[key].PartID;
+                p.Description = inv601Edits[key].Description;
+                p.Location = inv601Edits[key].Location;
+                p.Stock = inv601Edits[key].Stock;
+            }
         });
+        // add custom
+        inv601Custom.forEach(c => window._inv601Data.push(c));
+        // remove deleted
+        window._inv601Data = window._inv601Data.filter(p => !inv601Deleted.has(p.PartID + '::' + p.Location));
     })();
 
     function saveInv601() {
@@ -4747,7 +4761,7 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
     let actionTarget = null;
     let actionRowEl  = null;
     let actionMode   = '';
-    const HOLD_MS = 1000;
+    const HOLD_MS = 3000;
 
     function attachLongPress(cardEl, item) {
         let holdTimer = null;
@@ -4772,6 +4786,7 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
             holdTimer = setTimeout(() => {
                 holdTimer = null;
                 cardEl.classList.remove('holding');
+                cardEl.classList.add('_held'); // <--- FIX: block the tap
                 if (navigator.vibrate) navigator.vibrate(40);
                 openPartAction(item, cardEl);
             }, HOLD_MS);
@@ -4872,6 +4887,7 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         document.getElementById('pan-comments').value = item ? (item.Comments || '') : '';
         const titleEl = document.querySelector('#editPanModal h3');
         if (titleEl) titleEl.innerHTML = '<i class="ph-fill ph-map-pin" style="color:var(--success);"></i> ' + (modeLabels[mode] || mode);
+        document.querySelector('#editPanModal .btn-primary').setAttribute('onclick', 'saveEqEdit()');
         document.getElementById('editPanModal').classList.add('active');
     }
 
@@ -4931,6 +4947,7 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         document.getElementById('pan-level').value    = item.Level || '';
         document.getElementById('pan-room').value     = item.Room || '';
         document.getElementById('pan-comments').value = item.Comments || '';
+        document.querySelector('#editPanModal .btn-primary').setAttribute('onclick', 'savePanEdit()');
         document.getElementById('editPanModal').classList.add('active');
     }
 
@@ -5022,6 +5039,9 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
     }
 
     function savePartEdit() {
+        const is601 = currentLocalMode === 'inv601';
+        const activeDB = is601 ? window._inv601Data : db.parts;
+
         if (!editTarget) {
             // ── NEW PART ──
             const newPartID = document.getElementById('edit-partid').value.trim();
@@ -5032,52 +5052,87 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
                 Location:    document.getElementById('edit-loc').value.trim(),
                 Stock:       parseInt(document.getElementById('edit-stock').value) || 0
             };
-            db.parts.push(newPart);
-            customParts.push(newPart);
-            saveCustomParts();
+            
+            activeDB.push(newPart);
+            
+            if (is601) {
+                inv601Custom.push(newPart);
+                saveInv601Overrides();
+                const bEl = document.getElementById('b-inv601');
+                if (bEl) bEl.innerText = window._inv601Data.length;
+            } else {
+                customParts.push(newPart);
+                saveCustomParts();
+                document.getElementById('b-parts').innerText = db.parts.length;
+                document.getElementById('b-out').innerText = db.parts.filter(p => p.hasOwnProperty("Stock") && (p.Stock === "" || p.Stock === null || p.Stock === undefined || parseInt(p.Stock) === 0)).length;
+            }
+
             document.getElementById('editPartModal').classList.remove('active');
             // Restore modal title
             document.getElementById('editPartModal').querySelector('h3').innerHTML =
                 '<i class="ph-fill ph-pencil-simple" style="color:var(--primary);"></i> Edit Part';
-            const list = db.parts;
+            
+            const list = activeDB;
             currentLocalList = list;
-            renderLocalList(list, 'parts', false);
-            document.getElementById('b-parts').innerText = db.parts.length;
-            document.getElementById('b-out').innerText = db.parts.filter(p => p.hasOwnProperty("Stock") && (p.Stock === "" || p.Stock === null || p.Stock === undefined || parseInt(p.Stock) === 0)).length;
+            renderLocalList(list, currentLocalMode, false);
             return;
         }
+
         // ── EDIT EXISTING ──
         const newPartID = document.getElementById('edit-partid').value.trim();
         const newDesc   = document.getElementById('edit-desc').value.trim();
         const newLoc    = document.getElementById('edit-loc').value.trim();
         const newStock  = parseInt(document.getElementById('edit-stock').value) || 0;
 
-        const idx = db.parts.findIndex(p => p.PartID === editTarget.PartID);
+        const idx = activeDB.findIndex(p => p.PartID === editTarget.PartID && p.Location === editTarget.Location);
         if (idx !== -1) {
-            db.parts[idx].PartID = newPartID;
-            db.parts[idx].Description = newDesc;
-            db.parts[idx].Location = newLoc;
-            db.parts[idx].Stock = newStock;
-            partsEdits[newPartID] = { PartID: newPartID, Description: newDesc, Location: newLoc, Stock: newStock };
-            savePartsOverrides();
+            activeDB[idx].PartID = newPartID;
+            activeDB[idx].Description = newDesc;
+            activeDB[idx].Location = newLoc;
+            activeDB[idx].Stock = newStock;
+            
+            if (is601) {
+                const key = editTarget.PartID + '::' + editTarget.Location;
+                inv601Edits[key] = { PartID: newPartID, Description: newDesc, Location: newLoc, Stock: newStock };
+                saveInv601Overrides();
+            } else {
+                partsEdits[newPartID] = { PartID: newPartID, Description: newDesc, Location: newLoc, Stock: newStock };
+                savePartsOverrides();
+            }
         }
 
         document.getElementById('editPartModal').classList.remove('active');
         editTarget = null;
 
-        const list = (currentLocalMode === 'out') ? db.parts.filter(p => !p.Stock || parseInt(p.Stock) === 0) : db[currentLocalMode];
+        const list = (currentLocalMode === 'out') ? db.parts.filter(p => !p.Stock || parseInt(p.Stock) === 0) : activeDB;
         currentLocalList = list;
         renderLocalList(list, currentLocalMode, false);
-        document.getElementById('b-parts').innerText = db.parts.length;
-        document.getElementById('b-out').innerText = db.parts.filter(p => p.hasOwnProperty("Stock") && (p.Stock === "" || p.Stock === null || p.Stock === undefined || parseInt(p.Stock) === 0)).length;
+        
+        if (!is601) {
+            document.getElementById('b-parts').innerText = db.parts.length;
+            document.getElementById('b-out').innerText = db.parts.filter(p => p.hasOwnProperty("Stock") && (p.Stock === "" || p.Stock === null || p.Stock === undefined || parseInt(p.Stock) === 0)).length;
+        } else {
+            const bEl = document.getElementById('b-inv601');
+            if (bEl) bEl.innerText = window._inv601Data.length;
+        }
     }
 
     function confirmDeletePart(item, rowEl) {
         if (!confirm(`Delete part "${item.PartID} — ${item.Description}"?\nThis cannot be undone.`)) return;
-        partsDeleted.add(item.PartID);
-        const idx = db.parts.findIndex(p => p.PartID === item.PartID);
-        if (idx !== -1) db.parts.splice(idx, 1);
-        savePartsOverrides();
+        
+        const is601 = currentLocalMode === 'inv601';
+        const activeDB = is601 ? window._inv601Data : db.parts;
+        
+        const idx = activeDB.findIndex(p => p.PartID === item.PartID && p.Location === item.Location);
+        if (idx !== -1) activeDB.splice(idx, 1);
+        
+        if (is601) {
+            inv601Deleted.add(item.PartID + '::' + item.Location);
+            saveInv601Overrides();
+        } else {
+            partsDeleted.add(item.PartID);
+            savePartsOverrides();
+        }
 
         // Animate row out
         rowEl.style.transition = 'max-height 0.3s ease, opacity 0.3s ease';
@@ -5085,8 +5140,13 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         requestAnimationFrame(() => { rowEl.style.maxHeight = '0'; rowEl.style.opacity = '0'; });
         setTimeout(() => rowEl.remove(), 320);
 
-        document.getElementById('b-parts').innerText = db.parts.length;
-        document.getElementById('b-out').innerText = db.parts.filter(p => p.hasOwnProperty("Stock") && (p.Stock === "" || p.Stock === null || p.Stock === undefined || parseInt(p.Stock) === 0)).length;
+        if (!is601) {
+            document.getElementById('b-parts').innerText = db.parts.length;
+            document.getElementById('b-out').innerText = db.parts.filter(p => p.hasOwnProperty("Stock") && (p.Stock === "" || p.Stock === null || p.Stock === undefined || parseInt(p.Stock) === 0)).length;
+        } else {
+            const bEl = document.getElementById('b-inv601');
+            if (bEl) bEl.innerText = window._inv601Data.length;
+        }
     }
 
     function closeSecondary() {
@@ -5136,6 +5196,7 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         document.getElementById('pan-comments').value = '';
         document.getElementById('editPanModal').querySelector('h3').innerHTML =
             '<i class="ph-fill ph-plus-circle" style="color:var(--success);"></i> Add New Location';
+        document.querySelector('#editPanModal .btn-primary').setAttribute('onclick', 'savePanEdit()');
         document.getElementById('editPanModal').classList.add('active');
     }
 
