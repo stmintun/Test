@@ -2594,7 +2594,7 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         const b = document.getElementById('modalBody');
         const isPart    = (type === 'parts' || type === 'out' || type === 'inv601');
         const isLocMode = ['pan','blanket','washer','dryer','sterilizer','heatsealer'].includes(type);
-        const isErrCode = !isPart && type !== 'inv601';
+        const isErrCode = !isPart && !isLocMode && type !== 'inv601';
 
 
         let html = "";
@@ -2641,7 +2641,7 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         }
 
         // ── Associated Parts section (error codes only) ──────────────
-        if (isErrCode || isLocMode) {
+        if (isErrCode) {
             const errKey = [type, currentPartID].join('::');
 
             // Keyword-based auto-matches across ALL parts folders
@@ -4767,11 +4767,7 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         actionTarget = item;
         actionRowEl  = cardEl;
         actionMode   = currentLocalMode;
-        const label = item.PartID
-            ? `${item.PartID} — ${item.Description}`
-            : `${item['Unit S/N']} — ${item.Hospital}`;
-        document.getElementById('partActionTitle').textContent = label;
-        document.getElementById('partActionSheet').classList.add('active');
+        openEditFromAction();
     }
 
     function closePartAction(e) {
