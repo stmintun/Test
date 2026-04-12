@@ -2470,9 +2470,10 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
                 card.innerHTML = `<div class="data-title">${t}</div><div class="data-sub">${subtitle}</div><div class="hold-ring"><svg viewBox="0 0 36 36"><circle class="ring-track" cx="18" cy="18" r="15.9"/><circle class="ring-fill" cx="18" cy="18" r="15.9"/></svg></div>`;
                 // Single tap → view details (most reliable click handler)
                 (function(it, cd) {
-                    cd.addEventListener('click', function() {
-                        if (cd.classList.contains('_held')) { cd.classList.remove('_held'); return; }
-                        showDetails(it, currentLocalMode);
+                    cd.addEventListener('click', function(e) {
+                        console.log("Card clicked!", currentLocalMode, it);
+                        if (cd.classList.contains('_held')) { console.log("Blocked by _held"); cd.classList.remove('_held'); return; }
+                        try { showDetails(it, currentLocalMode); } catch(err) { console.error("Error in showDetails:", err); }
                     });
                 })(item, card);
                 attachLongPress(card, item);
@@ -3948,6 +3949,23 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         "Stock": 7
     }
 ];
+
+    // ── 601 Inventory edit/delete persistence ─────────────────────────
+    let inv601Edits = {};
+    let inv601Deleted = new Set();
+    let inv601Custom = [];
+    try { inv601Edits = JSON.parse(localStorage.getItem('mins_601_edits')) || {}; } catch(e) {}
+    try { inv601Deleted = new Set(JSON.parse(localStorage.getItem('mins_601_deleted')) || []); } catch(e) {}
+    try { inv601Custom = JSON.parse(localStorage.getItem('mins_601_custom')) || []; } catch(e) {}
+
+    function saveInv601Overrides() {
+        try {
+            localStorage.setItem('mins_601_edits', JSON.stringify(inv601Edits));
+            localStorage.setItem('mins_601_deleted', JSON.stringify([...inv601Deleted]));
+            localStorage.setItem('mins_601_custom', JSON.stringify(inv601Custom));
+        } catch(e) {}
+    }
+
     // Apply 601 Overrides
     (function(){
         window._inv601Data = window._inv601Base.slice();
@@ -3967,93 +3985,8 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         window._inv601Data = window._inv601Data.filter(p => !inv601Deleted.has(p.PartID + '::' + p.Location));
     })();
 
-    function saveInv601() {
-        // Only persist user-added items (not base data)
-        var extras = window._inv601Data.filter(function(item){
-            return !window._inv601Base.find(function(b){ return b.PartID===item.PartID && b.Location===item.Location; });
-        });
-        try { localStorage.setItem('mins_601_inv', JSON.stringify(extras)); } catch(e) {}
-        document.getElementById('b-inv601').innerText = window._inv601Data.length || 0;
-    }
-
-    function addNewInv601() {
-        // Re-use pan edit modal but wired for inv601
-        const modal = document.getElementById('editPanModal');
-        modal.querySelector('h3').innerHTML = '<i class="ph-fill ph-warehouse" style="color:#6366f1;"></i> Add 601 Inventory Item';
-        document.getElementById('editPanSN').value    = '';
-        document.getElementById('editPanLoc').value   = '';
-        document.getElementById('editPanBlock').value = '';
-        document.getElementById('editPanDesc').value  = '';
-        document.getElementById('editPanLvl').value   = '';
-        document.getElementById('editPanRoom').value  = '';
-        document.getElementById('editPanComments').value = '';
-        modal.dataset.inv601Mode = 'add';
-        modal.classList.add('active');
-    }
-
-    function openInv601EditModal(item) {
-        const modal = document.getElementById('editPanModal');
-        modal.querySelector('h3').innerHTML = '<i class="ph-fill ph-warehouse" style="color:#6366f1;"></i> Edit 601 Inventory Item';
-        document.getElementById('editPanSN').value    = item['Unit S/N']  || '';
-        document.getElementById('editPanLoc').value   = item['Location']  || '';
-        document.getElementById('editPanBlock').value = item['Block']     || '';
-        document.getElementById('editPanDesc').value  = item['Description/Ward'] || '';
-        document.getElementById('editPanLvl').value   = item['Level']     || '';
-        document.getElementById('editPanRoom').value  = item['Room']      || '';
-        document.getElementById('editPanComments').value = item['Comments'] || '';
-        modal.dataset.inv601Mode  = 'edit';
-        modal.dataset.inv601Key   = item['Unit S/N'] || '';
-        modal.classList.add('active');
-    }
-
-    // Override savePanEdit to handle both pan and inv601
-    const _origSavePanEdit = window.savePanEdit;
-    window.savePanEdit = function() {
-        const modal = document.getElementById('editPanModal');
-        if (!modal.dataset.inv601Mode) { _origSavePanEdit && _origSavePanEdit(); return; }
-
-        const newItem = {
-            'Unit S/N':         document.getElementById('editPanSN').value.trim(),
-            'Location':         document.getElementById('editPanLoc').value.trim(),
-            'Block':            document.getElementById('editPanBlock').value.trim(),
-            'Description/Ward': document.getElementById('editPanDesc').value.trim(),
-            'Level':            document.getElementById('editPanLvl').value.trim(),
-            'Room':             document.getElementById('editPanRoom').value.trim(),
-            'Comments':         document.getElementById('editPanComments').value.trim()
-        };
-        if (!newItem['Unit S/N']) { alert('Unit S/N is required'); return; }
-
-        if (modal.dataset.inv601Mode === 'add') {
-            window._inv601Data.push(newItem);
-        } else {
-            const idx = window._inv601Data.findIndex(x => x['Unit S/N'] === modal.dataset.inv601Key);
-            if (idx !== -1) window._inv601Data[idx] = newItem;
-        }
-
-        delete modal.dataset.inv601Mode;
-        delete modal.dataset.inv601Key;
-        saveInv601();
-        modal.classList.remove('active');
-
-        if (activeMode === 'inv601') openMode('inv601');
-    };
-
-    // Override confirmDeletePan to handle inv601 too
-    const _origConfirmDeletePan = window.confirmDeletePan;
-    window.confirmDeletePan = function(item, cardEl) {
-        if (activeMode !== 'inv601') { _origConfirmDeletePan && _origConfirmDeletePan(item, cardEl); return; }
-        if (!confirm('Delete this 601 Inventory item?')) return;
-        window._inv601Data = window._inv601Data.filter(x => x['Unit S/N'] !== item['Unit S/N']);
-        saveInv601();
-        if (cardEl) cardEl.remove();
-        openMode('inv601');
-    };
-
-    // Wire long-press action sheet for inv601: use the same action sheet but call inv601 handlers
-    const _origHandleAction = window.handleActionSheet;
-
-
     
+
     // ══════════════════════════════════════════════════════════════
     // DIAGNOSTIC SUBFOLDER SYSTEM (IndexedDB for PDFs, localStorage for metadata)
     // ══════════════════════════════════════════════════════════════
@@ -4814,7 +4747,7 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         cardEl.addEventListener('touchmove', e => {
             const dx = e.touches[0].clientX - startX;
             const dy = e.touches[0].clientY - startY;
-            if (Math.abs(dx) > 15 || Math.abs(dy) > 15) cancelHold(false);
+            if (Math.abs(dx) > 55 || Math.abs(dy) > 55) cancelHold(false);
         }, { passive: true });
         cardEl.addEventListener('touchend',   () => cancelHold(true));
         cardEl.addEventListener('touchcancel', () => cancelHold(false));
@@ -4824,7 +4757,7 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         cardEl.addEventListener('mousemove', e => {
             if (!holdTimer) return;
             const dx = e.clientX - startX, dy = e.clientY - startY;
-            if (Math.abs(dx) > 15 || Math.abs(dy) > 15) cancelHold(false);
+            if (Math.abs(dx) > 55 || Math.abs(dy) > 55) cancelHold(false);
         });
         cardEl.addEventListener('mouseup',    () => cancelHold(true));
         cardEl.addEventListener('mouseleave', () => cancelHold(false));
@@ -4852,8 +4785,6 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         if (!actionTarget) return;
         if (['blanket','washer','dryer','sterilizer','heatsealer'].includes(actionMode)) {
             openEqEditModal(actionTarget, actionMode);
-        } else if (actionMode === 'inv601') {
-            openInv601EditModal(actionTarget);
         } else if (actionMode === 'pan') {
             openPanEditModal(actionTarget);
         } else {
@@ -5163,12 +5094,12 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
 
     // ── Add New handlers ────────────────────────────────────────────
     function handleAddNew() {
+        console.log("handleAddNew clicked!");
         if (["blanket","washer","dryer","sterilizer","heatsealer"].includes(activeMode)) {
             openEqEditModal(null, activeMode); return;
         }
         if (currentLocalMode === 'pan') {
-            if (activeMode === 'inv601') addNewInv601();
-            else addNewPan();
+            addNewPan();
         } else {
             addNewPart();
         }
