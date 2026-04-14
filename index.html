@@ -753,7 +753,7 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
 <div class="edit-modal-overlay" id="editPartModal" onclick="closeEditModal(event)">
         <div class="edit-modal-sheet">
             <div style="width:40px; height:4px; background:#e2e8f0; border-radius:2px; margin:0 auto 20px;"></div>
-            <h3 style="font-family:'Outfit'; font-weight:900; margin:0 0 20px; color:var(--dark);"><i class="ph-fill ph-pencil-simple" style="color:var(--primary);"></i> Edit Part</h3>
+            <h3 id="editPartModalTitle" style="font-family:'Outfit'; font-weight:900; margin:0 0 20px; color:var(--dark);"><i class="ph-fill ph-pencil-simple" style="color:var(--primary);"></i> Edit Part</h3>
             <div style="margin-bottom:14px;">
                 <label class="edit-field-label">Part ID</label>
                 <input id="edit-partid" class="edit-field-input" type="text" placeholder="Part ID">
@@ -2650,11 +2650,21 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
             }
         });
 
-        if (isPart && type !== 'inv601') {
+        // ── Edit / Delete buttons for parts and locations ──
+        if (isPart || isLocMode) {
+            // Encode the JSON string to safely pass it in HTML attribute
+            const safeItem = encodeURIComponent(JSON.stringify(item));
+            
             html += `
                 <div style="display:flex; gap:10px; margin-top:20px;">
+                    <button class="btn" style="flex:1; background:#eff6ff; color:#2563eb; border:1px solid #bfdbfe; font-weight:800;"
+                        onclick="document.getElementById('detailModal').classList.remove('active'); setTimeout(function(){ openPartAction(JSON.parse(decodeURIComponent('${safeItem}')), null); }, 120);">
+                        <i class="ph-fill ph-pencil-simple"></i> Edit
+                    </button>
+                    ${(isPart && type !== 'inv601') ? `
                     <button class="btn btn-primary" style="flex:1" onclick="genEmail('${currentPartID}', 'Site Job Task')"><i class="ph-fill ph-envelope"></i> Task</button>
                     <button class="btn btn-secondary" style="flex:1; background:var(--coral-light); color:var(--coral); border-color:var(--coral)" onclick="genEmail('${currentPartID}', 'Order Part')"><i class="ph-fill ph-shopping-cart"></i> Order</button>
+                    ` : ''}
                 </div>
             `;
         }
@@ -4713,7 +4723,7 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
     let actionTarget = null;
     let actionRowEl  = null;
     let actionMode   = '';
-    const HOLD_MS = 3000;  // 3 seconds
+    const HOLD_MS = 800;  // 0.8 seconds
 
         function attachLongPress(cardEl, item) {
         let holdTimer = null;
@@ -4942,11 +4952,16 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
                 activeDB[idx].Description = document.getElementById('inline-desc').value.trim();
                 activeDB[idx].Location    = document.getElementById('inline-loc').value.trim();
                 activeDB[idx].Stock       = document.getElementById('inline-stock').value.trim();
-            }
-            if (is601) {
-                localStorage.setItem('mins_601_edits', JSON.stringify(window._inv601Data));
-            } else {
-                localStorage.setItem('mins_parts_edits', JSON.stringify(db.parts));
+                
+                const rec = activeDB[idx];
+                if (is601) {
+                    const key = actionTarget.PartID + '::' + actionTarget.Location;
+                    inv601Edits[key] = { PartID: rec.PartID, Description: rec.Description, Location: rec.Location, Stock: rec.Stock };
+                    saveInv601Overrides();
+                } else {
+                    partsEdits[actionTarget.PartID] = { PartID: rec.PartID, Description: rec.Description, Location: rec.Location, Stock: rec.Stock };
+                    savePartsOverrides();
+                }
             }
             currentLocalList = activeDB;
             renderLocalList(activeDB, actionMode, false);
@@ -4988,11 +5003,16 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
             const is601 = actionMode === 'inv601';
             const activeDB = is601 ? window._inv601Data : db.parts;
             const idx = activeDB.findIndex(p => p.PartID === actionTarget.PartID);
-            if (idx !== -1) activeDB.splice(idx, 1);
-            if (is601) {
-                localStorage.setItem('mins_601_edits', JSON.stringify(window._inv601Data));
-            } else {
-                localStorage.setItem('mins_parts_edits', JSON.stringify(db.parts));
+            if (idx !== -1) {
+                activeDB.splice(idx, 1);
+                if (is601) {
+                    const key = actionTarget.PartID + '::' + actionTarget.Location;
+                    inv601Deleted[key] = true;
+                    saveInv601Overrides();
+                } else {
+                    partsDeleted[actionTarget.PartID] = true;
+                    savePartsOverrides();
+                }
             }
             currentLocalList = activeDB;
             renderLocalList(activeDB, actionMode, false);
@@ -5229,8 +5249,8 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
 
             document.getElementById('editPartModal').classList.remove('active');
             // Restore modal title
-            document.getElementById('editPartModal').querySelector('h3').innerHTML =
-                '<i class="ph-fill ph-pencil-simple" style="color:var(--primary);"></i> Edit Part';
+            const titleReset = document.getElementById('editPartModalTitle') || document.querySelector('#editPartModal h3');
+            if (titleReset) titleReset.innerHTML = '<i class="ph-fill ph-pencil-simple" style="color:var(--primary);"></i> Edit Part';
             
             const list = activeDB;
             currentLocalList = list;
@@ -5340,8 +5360,8 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         document.getElementById('edit-desc').value   = '';
         document.getElementById('edit-loc').value    = '';
         document.getElementById('edit-stock').value  = '';
-        document.getElementById('editPartModal').querySelector('h3').innerHTML =
-            '<i class="ph-fill ph-plus-circle" style="color:var(--success);"></i> Add New Part';
+        const titleEl = document.getElementById('editPartModalTitle') || document.querySelector('#editPartModal h3');
+        if (titleEl) titleEl.innerHTML = '<i class="ph-fill ph-plus-circle" style="color:var(--success);"></i> Add New Part';
         document.getElementById('editPartModal').classList.add('active');
     }
 
