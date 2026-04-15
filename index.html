@@ -210,12 +210,15 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         
-        body { 
-            font-family: 'Inter', system-ui, sans-serif; background: var(--bg); 
-            margin: 0; padding: 0; color: var(--text-main); overflow-x: hidden; 
+        html, body {
+            margin: 0; padding: 0;
+            font-family: 'Inter', system-ui, sans-serif;
+            color: var(--text-main);
+            overflow-x: hidden;
             overscroll-behavior-y: none;
+            background: var(--bg);
         }
-        
+
         #app { position: relative; width: 100%; height: 100vh; height: 100dvh; overflow: hidden; background: var(--bg); }
         .view-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow-y: auto; background: var(--bg); transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1); padding-bottom: 40px; }
         
@@ -269,9 +272,9 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         .part-action-btn i { font-size: 1.3rem; }
 
         /* ── Edit Part Form Sheet ── */
-        .edit-modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.55); z-index: 400; display: flex; align-items: flex-end; opacity: 0; pointer-events: none; transition: opacity 0.25s; }
+        .edit-modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.55); z-index: 400; display: flex; align-items: flex-end; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.25s; }
         .edit-modal-overlay.active { opacity: 1; pointer-events: all; }
-        .edit-modal-sheet { background: var(--surface); width: 100%; max-width: 600px; margin: 0 auto; border-radius: 24px 24px 0 0; padding: 24px 20px 40px; transform: translateY(100%); transition: transform 0.3s cubic-bezier(.4,0,.2,1); }
+        .edit-modal-sheet { background: var(--surface); width: 100%; max-width: 600px; border-radius: 24px 24px 0 0; padding: 24px 20px 40px; transform: translateY(100%); transition: transform 0.3s cubic-bezier(.4,0,.2,1); max-height: 90vh; overflow-y: auto; }
         .edit-modal-overlay.active .edit-modal-sheet { transform: translateY(0); }
         .edit-field-label { font-size: 0.78rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px; display: block; }
         .edit-field-input { width: 100%; padding: 12px 14px; border: 2px solid #e2e8f0; border-radius: var(--radius-md); font-size: 0.95rem; font-family: 'Inter', sans-serif; font-weight: 500; background: #f8fafc; outline: none; box-sizing: border-box; transition: border-color 0.2s; }
@@ -471,9 +474,9 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         .card-edit-btn:active { background: #dbeafe; transform: scale(0.92); }
 
         /* Modal Details */
-        #detailModal { opacity: 0; pointer-events: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(5px); z-index: 200; display: flex; flex-direction: column; justify-content: flex-end; transition: opacity 0.3s ease; }
+        #detailModal { opacity: 0; pointer-events: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(5px); z-index: 200; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; transition: opacity 0.3s ease; }
         #detailModal.active { opacity: 1; pointer-events: auto; }
-        .modal-sheet { background: var(--surface); width: 100%; max-height: 85vh; border-top-left-radius: 25px; border-top-right-radius: 25px; padding: 25px 20px; box-shadow: var(--shadow-float); transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1); display: flex; flex-direction: column; }
+        .modal-sheet { background: var(--surface); width: 100%; max-width: 600px; max-height: 85vh; border-top-left-radius: 25px; border-top-right-radius: 25px; padding: 25px 20px; box-shadow: var(--shadow-float); transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1); display: flex; flex-direction: column; }
         #detailModal.active .modal-sheet { transform: translateY(0); }
         .modal-drag-handle { width: 40px; height: 5px; background: #cbd5e1; border-radius: 5px; margin: -10px auto 20px auto; }
         .modal-body-scroll { overflow-y: auto; padding-right: 5px; }
@@ -2556,33 +2559,93 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
                     t = (item.PartID || '') + ' — ' + (item.Description || '');
                 }
 
-                // Card body (tap → detail view)
+                // Card body (short tap → detail; 3-sec hold → edit)
                 const body = document.createElement('div');
                 body.className = 'data-card-body';
                 body.innerHTML = `<div class="data-title">${t}</div><div class="data-sub">${subtitle}</div>`;
 
-                // Edit button (tap → action sheet)
-                const editBtn = document.createElement('button');
-                editBtn.className = 'card-edit-btn';
-                editBtn.innerHTML = '<i class="ph-fill ph-pencil-simple"></i>';
-                editBtn.title = 'Edit';
-
                 card.appendChild(body);
-                card.appendChild(editBtn);
 
-                // Wire up interactions
+                // ── 3-second hold-to-edit ──────────────────────────────
                 (function(it, capturedMode) {
-                    body.addEventListener('click', function(e) {
-                        e.stopPropagation();
-                        showDetails(it, capturedMode);
+                    var holdTimer = null;
+                    var holdStart = 0;
+                    var startX = 0, startY = 0;
+                    var holding = false;
+                    var HOLD_DURATION = 3000;
+                    var MOVE_THRESHOLD = 30; // generous threshold for desktop
+
+                    function startHold(x, y) {
+                        startX = x; startY = y;
+                        holdStart = Date.now();
+                        holding = true;
+                        card.style.transition = 'box-shadow 3s linear, outline-color 0s';
+                        card.style.outline = '2.5px solid #3b82f6';
+                        card.style.boxShadow = '0 0 0 4px rgba(59,130,246,0.25)';
+                        holdTimer = setTimeout(function() {
+                            holding = false;
+                            holdTimer = null;
+                            card.style.outline = '';
+                            card.style.boxShadow = '';
+                            card.style.transition = '';
+                            if (navigator.vibrate) navigator.vibrate(50);
+                            openPartAction(it, card, capturedMode);
+                        }, HOLD_DURATION);
+                    }
+
+                    function cancelHold() {
+                        holding = false;
+                        if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
+                        card.style.outline = '';
+                        card.style.boxShadow = '';
+                        card.style.transition = '';
+                    }
+
+                    function hasMoved(x, y) {
+                        return Math.abs(x - startX) > MOVE_THRESHOLD ||
+                               Math.abs(y - startY) > MOVE_THRESHOLD;
+                    }
+
+                    // ── Touch (mobile) ──
+                    card.addEventListener('touchstart', function(e) {
+                        startHold(e.touches[0].clientX, e.touches[0].clientY);
+                    }, { passive: true });
+
+                    card.addEventListener('touchmove', function(e) {
+                        if (holdTimer && hasMoved(e.touches[0].clientX, e.touches[0].clientY)) cancelHold();
+                    }, { passive: true });
+
+                    card.addEventListener('touchend', function(e) {
+                        var elapsed = Date.now() - holdStart;
+                        cancelHold();
+                        if (elapsed < 600) showDetails(it, capturedMode);
                     });
-                    editBtn.addEventListener('click', function(e) {
-                        e.stopPropagation();
-                        openPartAction(it, card, capturedMode);
+
+                    card.addEventListener('touchcancel', function() { cancelHold(); });
+
+                    // ── Mouse (desktop) ──
+                    card.addEventListener('mousedown', function(e) {
+                        if (e.button !== 0) return;
+                        startHold(e.clientX, e.clientY);
                     });
+
+                    card.addEventListener('mousemove', function(e) {
+                        // only cancel if moved significantly while holding
+                        if (holdTimer && hasMoved(e.clientX, e.clientY)) cancelHold();
+                    });
+
+                    card.addEventListener('mouseup', function(e) {
+                        var elapsed = Date.now() - holdStart;
+                        cancelHold();
+                        if (elapsed < 600) showDetails(it, capturedMode);
+                    });
+
+                    // Do NOT cancel on mouseleave — this was cancelling holds on desktop
+                    card.addEventListener('contextmenu', function(e) { e.preventDefault(); });
                 })(item, mode);
 
                 content.appendChild(card);
+
             } else {
                 content.innerHTML += `<div class="data-card" onclick='showDetails(${JSON.stringify(item).replace(/'/g, "&#39;")}, "${mode}")'><div class="data-title">${t}</div><div class="data-sub">${s}</div></div>`;
             }
@@ -2736,21 +2799,12 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
             }
         });
 
-        // ── Edit / Delete buttons for parts and locations ──
-        if (isPart || isLocMode) {
-            // Encode the JSON string to safely pass it in HTML attribute
-            const safeItem = encodeURIComponent(JSON.stringify(item));
-            
+        // ── Task / Order buttons for parts only (Edit removed) ──
+        if (isPart && type !== 'inv601') {
             html += `
                 <div style="display:flex; gap:10px; margin-top:20px;">
-                    <button class="btn" style="flex:1; background:#eff6ff; color:#2563eb; border:1px solid #bfdbfe; font-weight:800;"
-                        onclick="document.getElementById('detailModal').classList.remove('active'); setTimeout(function(){ openPartAction(JSON.parse(decodeURIComponent('${safeItem}')), null, '${type}'); }, 120);">
-                        <i class="ph-fill ph-pencil-simple"></i> Edit
-                    </button>
-                    ${(isPart && type !== 'inv601') ? `
                     <button class="btn btn-primary" style="flex:1" onclick="genEmail('${currentPartID}', 'Site Job Task')"><i class="ph-fill ph-envelope"></i> Task</button>
                     <button class="btn btn-secondary" style="flex:1; background:var(--coral-light); color:var(--coral); border-color:var(--coral)" onclick="genEmail('${currentPartID}', 'Order Part')"><i class="ph-fill ph-shopping-cart"></i> Order</button>
-                    ` : ''}
                 </div>
             `;
         }
