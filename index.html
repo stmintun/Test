@@ -178,7 +178,12 @@ const db_pan_alarms = [
         "Action": "Check the spray nozzles and clean them if they are blocked."
     }
 ];
-window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan: db_pan, pan_alarms: db_pan_alarms, ken: db_ken, bandeli: db_bandeli, platypus: db_platypus, hippopotamus: db_hippo };
+const db_washer = [{"Unit S/N":"8456123790","Hospital":"Hollywood Private Hospital","Block":"Brislee Wing","Level":"Ground Floor","Room":"Recovery 2","Comments":"Heating element may be faulty. Requires testing and possible replacement."},{"Unit S/N":"9034571268","Hospital":"Westside Medical Centre","Block":"North Wing","Level":"2","Room":"ICU 1","Comments":"Door gasket worn out. Replacement required."},{"Unit S/N":"7349812560","Hospital":"Green Valley Hospital","Block":"East Wing","Level":"3","Room":"Ward 7","Comments":"Thermostat may need calibration or replacement."},{"Unit S/N":"6825149730","Hospital":"CityCare Hospital","Block":"South Wing","Level":"1","Room":"Emergency","Comments":"Control panel or wiring fault suspected."},{"Unit S/N":"5198734621","Hospital":"Riverside Private Hospital","Block":"Central Block","Level":"4","Room":"Maternity Ward","Comments":"Fan motor may be worn. Inspection required."}];
+const db_sterilizer = [{"Unit S/N":"7812459632","Hospital":"Hollywood Private Hospital","Block":"Brislee Wing","Level":"1","Room":"CSSD","Comments":"Drain pump likely blocked or faulty. Requires inspection and cleaning or replacement."},{"Unit S/N":"6923147850","Hospital":"Westside Medical Centre","Block":"North Wing","Level":"2","Room":"Sterile Room","Comments":"Possible control board or sensor fault. Further diagnostics required."},{"Unit S/N":"8547296130","Hospital":"Green Valley Hospital","Block":"East Wing","Level":"Ground Floor","Room":"CSSD","Comments":"Heating element or thermostat may be faulty. Requires testing and replacement if necessary."},{"Unit S/N":"9735612480","Hospital":"CityCare Hospital","Block":"South Wing","Level":"3","Room":"Theatre Wash Area","Comments":"Door lock mechanism faulty. Needs adjustment or replacement."},{"Unit S/N":"6158247390","Hospital":"Riverside Private Hospital","Block":"Central Block","Level":"2","Room":"Decontamination","Comments":"Possible hose or seal failure. Inspect and replace damaged components."}];
+const db_blanket = [{"Unit S/N":"8456123790","Hospital":"Hollywood Private Hospital","Block":"Brislee Wing","Level":"Ground Floor","Room":"Recovery 2","Comments":"Heating element may be faulty. Requires testing and possible replacement."},{"Unit S/N":"9034571268","Hospital":"Westside Medical Centre","Block":"North Wing","Level":"2","Room":"ICU 1","Comments":"Door gasket worn out. Replacement required."},{"Unit S/N":"7349812560","Hospital":"Green Valley Hospital","Block":"East Wing","Level":"3","Room":"Ward 7","Comments":"Thermostat may need calibration or replacement."},{"Unit S/N":"6825149730","Hospital":"CityCare Hospital","Block":"South Wing","Level":"1","Room":"Emergency","Comments":"Control panel or wiring fault suspected."},{"Unit S/N":"5198734621","Hospital":"Riverside Private Hospital","Block":"Central Block","Level":"4","Room":"Maternity Ward","Comments":"Fan motor may be worn. Inspection required."}];
+const db_dryer = [{"Unit S/N":"5638291742","Hospital":"St. Vincent's","Block":"North Wing","Level":"2","Room":"CSSD-3","Comments":"Door gasket worn out. Replacement required."},{"Unit S/N":"7281945630","Hospital":"Royal Perth","Block":"East Tower","Level":"4","Room":"Sterile Room B","Comments":"Thermostat may need calibration or replacement."},{"Unit S/N":"1847362950","Hospital":"Fiona Stanley","Block":"Surgical Wing","Level":"1","Room":"Equipment Bay 2","Comments":"Control panel or wiring fault suspected."},{"Unit S/N":"3094857162","Hospital":"Joondalup Health Campus","Block":"West Wing","Level":"3","Room":"Laundry Unit","Comments":"Fan motor may be worn. Inspection required."},{"Unit S/N":"8451029376","Hospital":"Sir Charles Gairdner","Block":"Central Block","Level":"6","Room":"CSSD Main","Comments":""}];
+const db_heatsealer = [{"Unit S/N":"6729451830","Hospital":"St. John of God Subiaco","Block":"South Wing","Level":"2","Room":"CSSD-1","Comments":"Seal not consistent across pouches"},{"Unit S/N":"5918372640","Hospital":"Royal Perth","Block":"West Tower","Level":"3","Room":"Sterile Room A","Comments":"Heating element not reaching set temp"},{"Unit S/N":"8301947265","Hospital":"Fiona Stanley","Block":"Central Wing","Level":"1","Room":"Prep Room 4","Comments":"Warning alarm keeps triggering"},{"Unit S/N":"2746195830","Hospital":"Hollywood Private Hospital","Block":"Brislee Wing","Level":"5","Room":"SCCD","Comments":"Handle mechanism is loose"},{"Unit S/N":"9182736450","Hospital":"Sir Charles Gairdner","Block":"North Block","Level":"4","Room":"CSSD Main","Comments":"Display screen flickering intermittently"}];
+window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan: db_pan, pan_alarms: db_pan_alarms, ken: db_ken, bandeli: db_bandeli, platypus: db_platypus, hippopotamus: db_hippo, washer: db_washer, sterilizer: db_sterilizer, blanket: db_blanket, dryer: db_dryer, heatsealer: db_heatsealer };
 
 </script>
 
@@ -774,6 +779,7 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
                 <button class="btn btn-secondary" style="flex:1;" onclick="closeEditModal()">Cancel</button>
                 <button class="btn btn-primary" style="flex:2;" onclick="savePartEdit()"><i class="ph-bold ph-floppy-disk"></i> Save Changes</button>
             </div>
+            <button class="btn" id="deletePartBtn" style="width:100%; margin-top:12px; background:#fef2f2; color:#dc2626; border:1px solid #fecaca; font-weight:700; display:none;" onclick="deletePartFromModal()"><i class="ph-fill ph-trash"></i> Delete Record</button>
         </div>
     </div>
 
@@ -813,6 +819,7 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
                 <button class="btn btn-secondary" style="flex:1;" onclick="closePanEditModal()">Cancel</button>
                 <button class="btn btn-primary" style="flex:2;" onclick="savePanEdit()"><i class="ph-bold ph-floppy-disk"></i> Save Changes</button>
             </div>
+            <button class="btn" id="deletePanBtn" style="width:100%; margin-top:12px; background:#fef2f2; color:#dc2626; border:1px solid #fecaca; font-weight:700; display:none;" onclick="deletePanOrEqFromModal()"><i class="ph-fill ph-trash"></i> Delete Record</button>
         </div>
     </div>
 
@@ -830,6 +837,12 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
 <input type="file" id="vaultFileInput" accept="*/*" multiple style="display:none;" onchange="processVaultFiles(event)">
 
 <script>
+    // Shared action-state variables (declared at top to avoid TDZ)
+    var _actionTarget = null;
+    var _actionRowEl  = null;
+    var _actionMode   = '';
+    const HOLD_MS    = 800;
+
     // In actual usage, db is loaded from data.js. If missing, define fallback.
     if(typeof db === 'undefined') {
         window.db = { parts: [], bht: [], gen5: [], tangent: [], pan: [] };
@@ -2247,15 +2260,88 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
     // ── Equipment Location data (Blanket / Washer / Dryer / Sterilizer) ──
     const EQ_MODES = ['blanket', 'washer', 'dryer', 'sterilizer', 'heatsealer'];
     const EQ_STORE_KEYS = { blanket: 'mins_blanket_locs', washer: 'mins_washer_locs', dryer: 'mins_dryer_locs', sterilizer: 'mins_sterilizer_locs', heatsealer: 'mins_heatsealer_locs' };
+    const EQ_DEL_KEYS   = { blanket: 'mins_blanket_del', washer: 'mins_washer_del', dryer: 'mins_dryer_del', sterilizer: 'mins_sterilizer_del', heatsealer: 'mins_heatsealer_del' };
     function loadEqData(mode) { try { return JSON.parse(localStorage.getItem(EQ_STORE_KEYS[mode])) || []; } catch(e) { return []; } }
-    function saveEqData(mode) { try { localStorage.setItem(EQ_STORE_KEYS[mode], JSON.stringify(db[mode] || [])); } catch(e) { console.warn('save eq failed', e); } }
+    function loadEqDeleted(mode) { try { return new Set(JSON.parse(localStorage.getItem(EQ_DEL_KEYS[mode])) || []); } catch(e) { return new Set(); } }
+    function saveEqData(mode) {
+        try { localStorage.setItem(EQ_STORE_KEYS[mode], JSON.stringify(db[mode] || [])); } catch(e) { console.warn('save eq failed', e); }
+        // Also persist the deleted-SNs set so base records stay gone after reload
+        try { localStorage.setItem(EQ_DEL_KEYS[mode], JSON.stringify([...(window._eqDeleted[mode] || new Set())])); } catch(e) {}
+    }
+    // Master deleted-SN registry for each EQ mode
+    window._eqDeleted = {};
+    EQ_MODES.forEach(function(m){ window._eqDeleted[m] = loadEqDeleted(m); });
 
     // Populate db entries for eq modes
-    if (!db.blanket)    db.blanket    = loadEqData('blanket');
-    if (!db.washer)     db.washer     = loadEqData('washer');
-    if (!db.dryer)      db.dryer      = loadEqData('dryer');
-    if (!db.sterilizer) db.sterilizer = loadEqData('sterilizer');
-    if (!db.heatsealer) db.heatsealer = loadEqData('heatsealer');
+    // Blanket: start from built-in base data, then merge any localStorage additions
+    (function(){
+        var extras = [];
+        try { extras = JSON.parse(localStorage.getItem(EQ_STORE_KEYS['blanket'])) || []; } catch(e) {}
+        if (extras.length > 0) { db.blanket = extras; }
+        var del = window._eqDeleted['blanket'];
+        db_blanket.forEach(function(base) {
+            if (!del.has(base['Unit S/N']) && !db.blanket.find(function(r){ return r['Unit S/N'] === base['Unit S/N']; })) {
+                db.blanket.push(base);
+            }
+        });
+    })();
+    // Washer: start from built-in base data, then merge any localStorage additions
+    (function(){
+        var extras = [];
+        try { extras = JSON.parse(localStorage.getItem(EQ_STORE_KEYS['washer'])) || []; } catch(e) {}
+        // extras stores the full array when user adds/edits; if it exists use it, otherwise fall back to base
+        if (extras.length > 0) {
+            db.washer = extras;
+        }
+        var del = window._eqDeleted['washer'];
+        db_washer.forEach(function(base) {
+            if (!del.has(base['Unit S/N']) && !db.washer.find(function(r){ return r['Unit S/N'] === base['Unit S/N']; })) {
+                db.washer.push(base);
+            }
+        });
+    })();
+    // Dryer: start from built-in base data, then merge any localStorage additions
+    (function(){
+        var extras = [];
+        try { extras = JSON.parse(localStorage.getItem(EQ_STORE_KEYS['dryer'])) || []; } catch(e) {}
+        if (extras.length > 0) {
+            db.dryer = extras;
+        }
+        var del = window._eqDeleted['dryer'];
+        db_dryer.forEach(function(base) {
+            if (!del.has(base['Unit S/N']) && !db.dryer.find(function(r){ return r['Unit S/N'] === base['Unit S/N']; })) {
+                db.dryer.push(base);
+            }
+        });
+    })();
+    // Sterilizer: start from built-in base data, then merge any localStorage additions
+    (function(){
+        var extras = [];
+        try { extras = JSON.parse(localStorage.getItem(EQ_STORE_KEYS['sterilizer'])) || []; } catch(e) {}
+        if (extras.length > 0) {
+            db.sterilizer = extras;
+        }
+        var del = window._eqDeleted['sterilizer'];
+        db_sterilizer.forEach(function(base) {
+            if (!del.has(base['Unit S/N']) && !db.sterilizer.find(function(r){ return r['Unit S/N'] === base['Unit S/N']; })) {
+                db.sterilizer.push(base);
+            }
+        });
+    })();
+    // Heat Sealer: start from built-in base data, then merge any localStorage additions
+    (function(){
+        var extras = [];
+        try { extras = JSON.parse(localStorage.getItem(EQ_STORE_KEYS['heatsealer'])) || []; } catch(e) {}
+        if (extras.length > 0) {
+            db.heatsealer = extras;
+        }
+        var del = window._eqDeleted['heatsealer'];
+        db_heatsealer.forEach(function(base) {
+            if (!del.has(base['Unit S/N']) && !db.heatsealer.find(function(r){ return r['Unit S/N'] === base['Unit S/N']; })) {
+                db.heatsealer.push(base);
+            }
+        });
+    })();
 
     let eqEditTarget = null;
     let eqEditMode   = null;    
@@ -2492,7 +2578,7 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
                     });
                     editBtn.addEventListener('click', function(e) {
                         e.stopPropagation();
-                        openPartAction(it, card);
+                        openPartAction(it, card, capturedMode);
                     });
                 })(item, mode);
 
@@ -2658,7 +2744,7 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
             html += `
                 <div style="display:flex; gap:10px; margin-top:20px;">
                     <button class="btn" style="flex:1; background:#eff6ff; color:#2563eb; border:1px solid #bfdbfe; font-weight:800;"
-                        onclick="document.getElementById('detailModal').classList.remove('active'); setTimeout(function(){ openPartAction(JSON.parse(decodeURIComponent('${safeItem}')), null); }, 120);">
+                        onclick="document.getElementById('detailModal').classList.remove('active'); setTimeout(function(){ openPartAction(JSON.parse(decodeURIComponent('${safeItem}')), null, '${type}'); }, 120);">
                         <i class="ph-fill ph-pencil-simple"></i> Edit
                     </button>
                     ${(isPart && type !== 'inv601') ? `
@@ -4687,16 +4773,16 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
 
     function openCommentEditor() {
         document.getElementById('partActionSheet').classList.remove('active');
-        if (!actionTarget) return;
-        _commentEditItem = actionTarget;
-        _commentEditMode = actionMode;
-        const title = actionTarget.PartID
-            ? (actionTarget.PartID + ' — ' + (actionTarget.Description || ''))
-            : ((actionTarget['Unit S/N'] || '') + ' — ' + (actionTarget.Hospital || ''));
+        if (!_actionTarget) return;
+        _commentEditItem = _actionTarget;
+        _commentEditMode = _actionMode;
+        const title = _actionTarget.PartID
+            ? (_actionTarget.PartID + ' — ' + (_actionTarget.Description || ''))
+            : ((_actionTarget['Unit S/N'] || '') + ' — ' + (_actionTarget.Hospital || ''));
         document.getElementById('commentEditorSubtitle').textContent = title;
-        const key = _commentStorageKey(actionTarget, actionMode);
+        const key = _commentStorageKey(_actionTarget, _actionMode);
         const saved = localStorage.getItem(key);
-        document.getElementById('commentEditorArea').value = saved !== null ? saved : (actionTarget.Comments || actionTarget.Notes || '');
+        document.getElementById('commentEditorArea').value = saved !== null ? saved : (_actionTarget.Comments || _actionTarget.Notes || '');
         const modal = document.getElementById('commentEditorModal');
         modal.style.display = 'flex';
         setTimeout(() => document.getElementById('commentEditorArea').focus(), 200);
@@ -4720,10 +4806,6 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         setTimeout(() => { toast.remove(); closeCommentEditor(); }, 1200);
     }
 
-    let actionTarget = null;
-    let actionRowEl  = null;
-    let actionMode   = '';
-    const HOLD_MS = 800;  // 0.8 seconds
 
         function attachLongPress(cardEl, item) {
         let holdTimer = null;
@@ -4820,101 +4902,34 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         });
     }
 
-        function openPartAction(item, cardEl) {
-        actionTarget = item;
-        actionRowEl  = cardEl;
-        actionMode   = currentLocalMode;
+        function openPartAction(item, cardEl, mode) {
+        // Guard state assignments against TDZ errors
+        try { _actionTarget = item; _actionRowEl = cardEl; _actionMode = mode || currentLocalMode; } catch(e) {}
+        var capturedMode = mode || currentLocalMode;
 
-        // Build an edit form directly inside the working #detailModal
-        const b = document.getElementById('modalBody');
-        const isLoc = (actionMode === 'pan' || ['blanket','washer','dryer','sterilizer','heatsealer'].includes(actionMode));
-        const isPart = (actionMode === 'parts' || actionMode === 'out' || actionMode === 'inv601');
-        let html = '';
+        // Route directly to the appropriate dedicated edit modal
+        var isLoc  = (capturedMode === 'pan' || capturedMode === 'blanket' || capturedMode === 'washer' || capturedMode === 'dryer' || capturedMode === 'sterilizer' || capturedMode === 'heatsealer');
+        var isPart = (capturedMode === 'parts' || capturedMode === 'out' || capturedMode === 'inv601');
+
+        // Close detail modal if open, then open the right edit modal
+        document.getElementById('detailModal').classList.remove('active');
 
         if (isLoc) {
-            // Pan / Equipment location edit form
-            const titleLabel = actionMode === 'pan' ? 'Edit Pan Location' : (modeLabels[actionMode] || actionMode);
-            html = `
-                <h3 style="font-family:'Outfit'; font-weight:900; margin:0 0 20px; color:var(--dark); font-size:1.15rem;">
-                    <i class="ph-fill ph-pencil-simple" style="color:var(--primary);"></i> ${titleLabel}
-                </h3>
-                <div style="margin-bottom:14px;">
-                    <label class="edit-field-label">Unit S/N</label>
-                    <input id="inline-sn" class="edit-field-input" type="text" value="${item['Unit S/N'] || ''}">
-                </div>
-                <div style="margin-bottom:14px;">
-                    <label class="edit-field-label">Hospital</label>
-                    <input id="inline-hospital" class="edit-field-input" type="text" value="${item.Hospital || ''}">
-                </div>
-                <div style="margin-bottom:14px;">
-                    <label class="edit-field-label">Block / Wing</label>
-                    <input id="inline-block" class="edit-field-input" type="text" value="${item.Block || ''}">
-                </div>
-                <div style="margin-bottom:14px;">
-                    <label class="edit-field-label">Ward / Department</label>
-                    <input id="inline-ward" class="edit-field-input" type="text" value="${item.Ward || ''}">
-                </div>
-                <div style="margin-bottom:14px;">
-                    <label class="edit-field-label">Level</label>
-                    <input id="inline-level" class="edit-field-input" type="text" value="${item.Level || ''}">
-                </div>
-                <div style="margin-bottom:14px;">
-                    <label class="edit-field-label">Room</label>
-                    <input id="inline-room" class="edit-field-input" type="text" value="${item.Room || ''}">
-                </div>
-                <div style="margin-bottom:20px;">
-                    <label class="edit-field-label">Comments</label>
-                    <input id="inline-comments" class="edit-field-input" type="text" value="${item.Comments || ''}">
-                </div>
-                <div style="display:flex; gap:10px;">
-                    <button class="btn btn-secondary" style="flex:1;" onclick="closeModal({target:document.getElementById('detailModal')})">Cancel</button>
-                    <button class="btn btn-primary" style="flex:2;" onclick="saveInlineEdit()"><i class="ph-bold ph-floppy-disk"></i> Save Changes</button>
-                </div>
-                <button class="btn" style="width:100%; margin-top:12px; background:#fef2f2; color:#dc2626; border:1px solid #fecaca; font-weight:700;" onclick="deleteInlineEdit()"><i class="ph-fill ph-trash"></i> Delete Record</button>
-            `;
+            if (capturedMode === 'pan') {
+                openPanEditModal(item);
+            } else {
+                openEqEditModal(item, capturedMode);
+            }
         } else if (isPart) {
-            // Parts edit form
-            html = `
-                <h3 style="font-family:'Outfit'; font-weight:900; margin:0 0 20px; color:var(--dark); font-size:1.15rem;">
-                    <i class="ph-fill ph-pencil-simple" style="color:var(--primary);"></i> Edit Part
-                </h3>
-                <div style="margin-bottom:14px;">
-                    <label class="edit-field-label">Part ID</label>
-                    <input id="inline-partid" class="edit-field-input" type="text" value="${item.PartID || ''}">
-                </div>
-                <div style="margin-bottom:14px;">
-                    <label class="edit-field-label">Description</label>
-                    <input id="inline-desc" class="edit-field-input" type="text" value="${item.Description || ''}">
-                </div>
-                <div style="margin-bottom:14px;">
-                    <label class="edit-field-label">Location</label>
-                    <input id="inline-loc" class="edit-field-input" type="text" value="${item.Location || ''}">
-                </div>
-                <div style="margin-bottom:20px;">
-                    <label class="edit-field-label">Stock</label>
-                    <input id="inline-stock" class="edit-field-input" type="number" min="0" value="${item.Stock !== undefined ? item.Stock : ''}">
-                </div>
-                <div style="display:flex; gap:10px;">
-                    <button class="btn btn-secondary" style="flex:1;" onclick="closeModal({target:document.getElementById('detailModal')})">Cancel</button>
-                    <button class="btn btn-primary" style="flex:2;" onclick="saveInlineEdit()"><i class="ph-bold ph-floppy-disk"></i> Save Changes</button>
-                </div>
-                <button class="btn" style="width:100%; margin-top:12px; background:#fef2f2; color:#dc2626; border:1px solid #fecaca; font-weight:700;" onclick="deleteInlineEdit()"><i class="ph-fill ph-trash"></i> Delete Record</button>
-            `;
+            openEditModal(item);
         }
-
-        b.innerHTML = html;
-
-        // Replace the Close button text
-        const closeBtn = document.querySelector('#detailModal .btn-secondary[onclick*="closeModal"]');
-        // Show modal
-        document.getElementById('detailModal').classList.add('active');
     }
 
     // ── Inline Edit Save (works inside #detailModal) ────────────────
     function saveInlineEdit() {
-        if (!actionTarget) return;
-        const isLoc = (actionMode === 'pan' || ['blanket','washer','dryer','sterilizer','heatsealer'].includes(actionMode));
-        const isPart = (actionMode === 'parts' || actionMode === 'out' || actionMode === 'inv601');
+        if (!_actionTarget) return;
+        const isLoc = (_actionMode === 'pan' || ['blanket','washer','dryer','sterilizer','heatsealer'].includes(_actionMode));
+        const isPart = (_actionMode === 'parts' || _actionMode === 'out' || _actionMode === 'inv601');
 
         if (isLoc) {
             const newSN = document.getElementById('inline-sn').value.trim();
@@ -4928,25 +4943,25 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
                 Room:       document.getElementById('inline-room').value.trim(),
                 Comments:   document.getElementById('inline-comments').value.trim()
             };
-            if (actionMode === 'pan') {
-                const idx = db.pan.findIndex(p => p['Unit S/N'] === actionTarget['Unit S/N']);
+            if (_actionMode === 'pan') {
+                const idx = db.pan.findIndex(p => p['Unit S/N'] === _actionTarget['Unit S/N']);
                 if (idx !== -1) db.pan[idx] = entry;
                 localStorage.setItem('mins_pan_edits', JSON.stringify(db.pan));
                 currentLocalList = db.pan;
                 renderLocalList(db.pan, 'pan', false);
             } else {
-                const idx = (db[actionMode] || []).findIndex(p => p['Unit S/N'] === actionTarget['Unit S/N']);
-                if (idx !== -1) db[actionMode][idx] = entry;
-                saveEqData(actionMode);
-                currentLocalList = db[actionMode];
-                renderLocalList(db[actionMode], actionMode, false);
+                const idx = (db[_actionMode] || []).findIndex(p => p['Unit S/N'] === _actionTarget['Unit S/N']);
+                if (idx !== -1) db[_actionMode][idx] = entry;
+                saveEqData(_actionMode);
+                currentLocalList = db[_actionMode];
+                renderLocalList(db[_actionMode], _actionMode, false);
             }
         } else if (isPart) {
-            const is601 = actionMode === 'inv601';
+            const is601 = _actionMode === 'inv601';
             const activeDB = is601 ? window._inv601Data : db.parts;
             const newPID = document.getElementById('inline-partid').value.trim();
             if (!newPID) { alert('Part ID is required.'); return; }
-            const idx = activeDB.findIndex(p => p.PartID === actionTarget.PartID);
+            const idx = activeDB.findIndex(p => p.PartID === _actionTarget.PartID);
             if (idx !== -1) {
                 activeDB[idx].PartID      = newPID;
                 activeDB[idx].Description = document.getElementById('inline-desc').value.trim();
@@ -4955,21 +4970,21 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
                 
                 const rec = activeDB[idx];
                 if (is601) {
-                    const key = actionTarget.PartID + '::' + actionTarget.Location;
+                    const key = _actionTarget.PartID + '::' + _actionTarget.Location;
                     inv601Edits[key] = { PartID: rec.PartID, Description: rec.Description, Location: rec.Location, Stock: rec.Stock };
                     saveInv601Overrides();
                 } else {
-                    partsEdits[actionTarget.PartID] = { PartID: rec.PartID, Description: rec.Description, Location: rec.Location, Stock: rec.Stock };
+                    partsEdits[_actionTarget.PartID] = { PartID: rec.PartID, Description: rec.Description, Location: rec.Location, Stock: rec.Stock };
                     savePartsOverrides();
                 }
             }
             currentLocalList = activeDB;
-            renderLocalList(activeDB, actionMode, false);
+            renderLocalList(activeDB, _actionMode, false);
         }
 
         // Close modal and show toast
         closeModal({target: document.getElementById('detailModal')});
-        actionTarget = null;
+        _actionTarget = null;
         const toast = document.createElement('div');
         toast.style.cssText = 'position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:#1e293b;color:white;padding:10px 24px;border-radius:30px;font-size:0.85rem;font-weight:700;font-family:Inter,sans-serif;box-shadow:0 4px 20px rgba(0,0,0,0.2);z-index:10000;display:flex;align-items:center;gap:8px;white-space:nowrap;';
         toast.innerHTML = '<i class="ph-fill ph-check-circle" style="color:#34d399;font-size:1.1rem;"></i> Changes saved';
@@ -4978,48 +4993,49 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
     }
 
     function deleteInlineEdit() {
-        if (!actionTarget) return;
-        const label = actionTarget['Unit S/N'] || actionTarget.PartID || 'this record';
+        if (!_actionTarget) return;
+        const label = _actionTarget['Unit S/N'] || _actionTarget.PartID || 'this record';
         if (!confirm('Delete "' + label + '"?\nThis cannot be undone.')) return;
 
-        const isLoc = (actionMode === 'pan' || ['blanket','washer','dryer','sterilizer','heatsealer'].includes(actionMode));
-        const isPart = (actionMode === 'parts' || actionMode === 'out' || actionMode === 'inv601');
+        const isLoc = (_actionMode === 'pan' || ['blanket','washer','dryer','sterilizer','heatsealer'].includes(_actionMode));
+        const isPart = (_actionMode === 'parts' || _actionMode === 'out' || _actionMode === 'inv601');
 
         if (isLoc) {
-            if (actionMode === 'pan') {
-                const idx = db.pan.findIndex(p => p['Unit S/N'] === actionTarget['Unit S/N']);
+            if (_actionMode === 'pan') {
+                const idx = db.pan.findIndex(p => p['Unit S/N'] === _actionTarget['Unit S/N']);
                 if (idx !== -1) db.pan.splice(idx, 1);
                 localStorage.setItem('mins_pan_edits', JSON.stringify(db.pan));
                 currentLocalList = db.pan;
                 renderLocalList(db.pan, 'pan', false);
             } else {
-                const idx = (db[actionMode] || []).findIndex(p => p['Unit S/N'] === actionTarget['Unit S/N']);
-                if (idx !== -1) db[actionMode].splice(idx, 1);
-                saveEqData(actionMode);
-                currentLocalList = db[actionMode];
-                renderLocalList(db[actionMode], actionMode, false);
+                const sn = _actionTarget['Unit S/N'];
+                if (window._eqDeleted[_actionMode]) window._eqDeleted[_actionMode].add(sn);
+                const idx = (db[_actionMode] || []).findIndex(p => p['Unit S/N'] === sn);
+                if (idx !== -1) db[_actionMode].splice(idx, 1);
+                saveEqData(_actionMode);
+                currentLocalList = db[_actionMode];
+                renderLocalList(db[_actionMode], _actionMode, false);
             }
         } else if (isPart) {
-            const is601 = actionMode === 'inv601';
+            const is601 = _actionMode === 'inv601';
             const activeDB = is601 ? window._inv601Data : db.parts;
-            const idx = activeDB.findIndex(p => p.PartID === actionTarget.PartID);
+            const idx = activeDB.findIndex(p => p.PartID === _actionTarget.PartID);
             if (idx !== -1) {
                 activeDB.splice(idx, 1);
                 if (is601) {
-                    const key = actionTarget.PartID + '::' + actionTarget.Location;
-                    inv601Deleted[key] = true;
+                    inv601Deleted.add(_actionTarget.PartID + '::' + _actionTarget.Location);
                     saveInv601Overrides();
                 } else {
-                    partsDeleted[actionTarget.PartID] = true;
+                    partsDeleted.add(_actionTarget.PartID);
                     savePartsOverrides();
                 }
             }
             currentLocalList = activeDB;
-            renderLocalList(activeDB, actionMode, false);
+            renderLocalList(activeDB, _actionMode, false);
         }
 
         closeModal({target: document.getElementById('detailModal')});
-        actionTarget = null;
+        _actionTarget = null;
     }
 
 
@@ -5031,25 +5047,25 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
 
     function openEditFromAction() {
         document.getElementById('partActionSheet').classList.remove('active');
-        if (!actionTarget) return;
-        if (['blanket','washer','dryer','sterilizer','heatsealer'].includes(actionMode)) {
-            openEqEditModal(actionTarget, actionMode);
-        } else if (actionMode === 'pan') {
-            openPanEditModal(actionTarget);
+        if (!_actionTarget) return;
+        if (['blanket','washer','dryer','sterilizer','heatsealer'].includes(_actionMode)) {
+            openEqEditModal(_actionTarget, _actionMode);
+        } else if (_actionMode === 'pan') {
+            openPanEditModal(_actionTarget);
         } else {
-            openEditModal(actionTarget);
+            openEditModal(_actionTarget);
         }
     }
 
     function deleteFromAction() {
         document.getElementById('partActionSheet').classList.remove('active');
-        if (!actionTarget || !actionRowEl) return;
-        if (['blanket','washer','dryer','sterilizer','heatsealer'].includes(actionMode)) {
-            confirmDeleteEq(actionTarget, actionRowEl, actionMode);
-        } else if (actionMode === 'pan') {
-            confirmDeletePan(actionTarget, actionRowEl);
+        if (!_actionTarget || !_actionRowEl) return;
+        if (['blanket','washer','dryer','sterilizer','heatsealer'].includes(_actionMode)) {
+            confirmDeleteEq(_actionTarget, _actionRowEl, _actionMode);
+        } else if (_actionMode === 'pan') {
+            confirmDeletePan(_actionTarget, _actionRowEl);
         } else {
-            confirmDeletePart(actionTarget, actionRowEl);
+            confirmDeletePart(_actionTarget, _actionRowEl);
         }
     }
 
@@ -5066,8 +5082,11 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         document.getElementById('pan-room').value     = item ? (item.Room || '') : '';
         document.getElementById('pan-comments').value = item ? (item.Comments || '') : '';
         const titleEl = document.querySelector('#editPanModal h3');
-        if (titleEl) titleEl.innerHTML = '<i class="ph-fill ph-map-pin" style="color:var(--success);"></i> ' + (modeLabels[mode] || mode);
+        if (titleEl) titleEl.innerHTML = '<i class="ph-fill ph-map-pin" style="color:var(--success);"></i> ' + (item ? 'Edit ' : 'Add New ') + (modeLabels[mode] || mode);
         document.querySelector('#editPanModal .btn-primary').setAttribute('onclick', 'saveEqEdit()');
+        // Show delete button only when editing existing record
+        var delBtn = document.getElementById('deletePanBtn');
+        if (delBtn) delBtn.style.display = item ? 'flex' : 'none';
         document.getElementById('editPanModal').classList.add('active');
     }
 
@@ -5104,7 +5123,9 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
 
     function confirmDeleteEq(item, cardEl, mode) {
         if (!confirm(`Delete "${item['Unit S/N']} at ${item.Hospital}"?\nThis cannot be undone.`)) return;
-        const idx = (db[mode] || []).findIndex(p => p['Unit S/N'] === item['Unit S/N']);
+        const sn = item['Unit S/N'];
+        if (window._eqDeleted[mode]) window._eqDeleted[mode].add(sn);
+        const idx = (db[mode] || []).findIndex(p => p['Unit S/N'] === sn);
         if (idx !== -1) db[mode].splice(idx, 1);
         saveEqData(mode);
         cardEl.style.transition = 'max-height 0.3s ease, opacity 0.3s ease';
@@ -5127,15 +5148,56 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         document.getElementById('pan-level').value    = item.Level || '';
         document.getElementById('pan-room').value     = item.Room || '';
         document.getElementById('pan-comments').value = item.Comments || '';
+        const titleEl = document.querySelector('#editPanModal h3');
+        if (titleEl) titleEl.innerHTML = '<i class="ph-fill ph-map-pin" style="color:var(--success);"></i> Edit Pan Location';
         document.querySelector('#editPanModal .btn-primary').setAttribute('onclick', 'savePanEdit()');
+        // Show delete button for existing records
+        var delBtn = document.getElementById('deletePanBtn');
+        if (delBtn) delBtn.style.display = 'flex';
         document.getElementById('editPanModal').classList.add('active');
     }
 
     function closePanEditModal(e) {
         if (!e || e.target.id === 'editPanModal') {
             document.getElementById('editPanModal').classList.remove('active');
+            var delBtn = document.getElementById('deletePanBtn');
+            if (delBtn) delBtn.style.display = 'none';
             panEditTarget = null; eqEditTarget = null; eqEditMode = null;
         }
+    }
+
+    // Delete from Pan/EQ edit modal — uses _actionTarget set by openPartAction
+    function deletePanOrEqFromModal() {
+        var item = eqEditTarget || panEditTarget || _actionTarget;
+        var mode = eqEditMode || 'pan';
+        if (!item) return;
+        var label = item['Unit S/N'] || 'this record';
+        if (!confirm('Delete "' + label + '"?\nThis cannot be undone.')) return;
+        document.getElementById('editPanModal').classList.remove('active');
+        var delBtn = document.getElementById('deletePanBtn');
+        if (delBtn) delBtn.style.display = 'none';
+        if (mode === 'pan') {
+            var sn = item['Unit S/N'];
+            panDeleted.add(sn);
+            var idx = db.pan.findIndex(function(p){ return p['Unit S/N'] === sn; });
+            if (idx !== -1) db.pan.splice(idx, 1);
+            savePanOverrides();
+            currentLocalList = db.pan;
+            renderLocalList(db.pan, 'pan', false);
+            var bEl = document.getElementById('b-pan');
+            if (bEl) bEl.innerText = db.pan.length;
+        } else {
+            var sn = item['Unit S/N'];
+            if (window._eqDeleted[mode]) window._eqDeleted[mode].add(sn);
+            var idx = (db[mode] || []).findIndex(function(p){ return p['Unit S/N'] === sn; });
+            if (idx !== -1) db[mode].splice(idx, 1);
+            saveEqData(mode);
+            currentLocalList = db[mode];
+            renderLocalList(db[mode], mode, false);
+            var bEl = document.getElementById('b-' + mode);
+            if (bEl) bEl.innerText = (db[mode] || []).length;
+        }
+        panEditTarget = null; eqEditTarget = null; eqEditMode = null; _actionTarget = null;
     }
 
     function savePanEdit() {
@@ -5208,14 +5270,53 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         document.getElementById('edit-desc').value = item.Description || '';
         document.getElementById('edit-loc').value = item.Location || '';
         document.getElementById('edit-stock').value = item.Stock !== undefined ? item.Stock : '';
+        // Show delete button for existing records
+        var delBtn = document.getElementById('deletePartBtn');
+        if (delBtn) delBtn.style.display = item ? 'flex' : 'none';
         document.getElementById('editPartModal').classList.add('active');
     }
 
     function closeEditModal(e) {
         if (!e || e.target.id === 'editPartModal') {
             document.getElementById('editPartModal').classList.remove('active');
+            var delBtn = document.getElementById('deletePartBtn');
+            if (delBtn) delBtn.style.display = 'none';
             editTarget = null;
         }
+    }
+
+    // Delete from parts edit modal
+    function deletePartFromModal() {
+        var item = editTarget || _actionTarget;
+        var mode = currentLocalMode;
+        if (!item) return;
+        var label = item.PartID || 'this record';
+        if (!confirm('Delete "' + label + ' — ' + (item.Description || '') + '"?\nThis cannot be undone.')) return;
+        document.getElementById('editPartModal').classList.remove('active');
+        var delBtn = document.getElementById('deletePartBtn');
+        if (delBtn) delBtn.style.display = 'none';
+        var is601 = (mode === 'inv601');
+        var activeDB = is601 ? window._inv601Data : db.parts;
+        var idx = activeDB.findIndex(function(p){ return p.PartID === item.PartID && p.Location === item.Location; });
+        if (idx !== -1) activeDB.splice(idx, 1);
+        if (is601) {
+            inv601Deleted.add(item.PartID + '::' + item.Location);
+            saveInv601Overrides();
+        } else {
+            partsDeleted.add(item.PartID);
+            savePartsOverrides();
+        }
+        var list = (mode === 'out') ? db.parts.filter(function(p){ return !p.Stock || parseInt(p.Stock) === 0; }) : activeDB;
+        currentLocalList = list;
+        renderLocalList(list, mode, false);
+        if (!is601) {
+            document.getElementById('b-parts').innerText = db.parts.length;
+            document.getElementById('b-out').innerText = db.parts.filter(function(p){ return p.hasOwnProperty('Stock') && (p.Stock === '' || p.Stock === null || p.Stock === undefined || parseInt(p.Stock) === 0); }).length;
+        } else {
+            var bEl = document.getElementById('b-inv601');
+            if (bEl) bEl.innerText = window._inv601Data.length;
+        }
+        editTarget = null; _actionTarget = null;
     }
 
     function savePartEdit() {
@@ -5343,7 +5444,6 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
 
     // ── Add New handlers ────────────────────────────────────────────
     function handleAddNew() {
-        console.log("handleAddNew clicked!");
         if (["blanket","washer","dryer","sterilizer","heatsealer"].includes(activeMode)) {
             openEqEditModal(null, activeMode); return;
         }
@@ -5355,18 +5455,22 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
     }
 
     function addNewPart() {
-        editTarget = null; // null = new mode
+        editTarget = null;
         document.getElementById('edit-partid').value = '';
         document.getElementById('edit-desc').value   = '';
         document.getElementById('edit-loc').value    = '';
         document.getElementById('edit-stock').value  = '';
         const titleEl = document.getElementById('editPartModalTitle') || document.querySelector('#editPartModal h3');
         if (titleEl) titleEl.innerHTML = '<i class="ph-fill ph-plus-circle" style="color:var(--success);"></i> Add New Part';
+        // Hide delete button for new records
+        var delBtn = document.getElementById('deletePartBtn');
+        if (delBtn) delBtn.style.display = 'none';
         document.getElementById('editPartModal').classList.add('active');
     }
 
     function addNewPan() {
         panEditTarget = null;
+        eqEditMode = null;
         document.getElementById('pan-sn').value       = '';
         document.getElementById('pan-hospital').value = '';
         document.getElementById('pan-block').value    = '';
@@ -5377,6 +5481,9 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         document.getElementById('editPanModal').querySelector('h3').innerHTML =
             '<i class="ph-fill ph-plus-circle" style="color:var(--success);"></i> Add New Location';
         document.querySelector('#editPanModal .btn-primary').setAttribute('onclick', 'savePanEdit()');
+        // Hide delete button for new records
+        var delBtn = document.getElementById('deletePanBtn');
+        if (delBtn) delBtn.style.display = 'none';
         document.getElementById('editPanModal').classList.add('active');
     }
 
