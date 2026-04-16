@@ -465,7 +465,7 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         .local-search-icon { position: absolute; left: 32px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 1.1rem; }
 
         /* General Card */
-        .data-card { background: var(--surface); border-radius: var(--radius-lg); padding: 16px 14px 16px 18px; box-shadow: var(--shadow-sm); border: 1px solid #e2e8f0; cursor: pointer; transition: var(--transition); touch-action: manipulation; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; display: flex; align-items: center; gap: 10px; }
+        .data-card { background: var(--surface); border-radius: var(--radius-lg); padding: 16px 14px 16px 18px; box-shadow: var(--shadow-sm); border: 1px solid #e2e8f0; cursor: pointer; transition: var(--transition); touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; display: flex; align-items: center; gap: 10px; }
         .data-card:active { transform: scale(0.98); background: #f8fafc; }
         .data-card-body { flex: 1; min-width: 0; }
         .data-title { font-weight: 800; color: var(--primary); font-size: 1.1rem; margin-bottom: 4px; font-family: 'Outfit', sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -2261,9 +2261,9 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
     try { panDeleted = new Set(JSON.parse(localStorage.getItem('mins_pan_deleted')) || []); } catch(e) {}
 
     // ── Equipment Location data (Blanket / Washer / Dryer / Sterilizer) ──
-    const EQ_MODES = ['blanket', 'washer', 'dryer', 'sterilizer', 'heatsealer'];
-    const EQ_STORE_KEYS = { blanket: 'mins_blanket_locs', washer: 'mins_washer_locs', dryer: 'mins_dryer_locs', sterilizer: 'mins_sterilizer_locs', heatsealer: 'mins_heatsealer_locs' };
-    const EQ_DEL_KEYS   = { blanket: 'mins_blanket_del', washer: 'mins_washer_del', dryer: 'mins_dryer_del', sterilizer: 'mins_sterilizer_del', heatsealer: 'mins_heatsealer_del' };
+    const EQ_MODES = ['blanket', 'washer', 'dryer', 'sterilizer', 'heatsealer', 'pan'];
+    const EQ_STORE_KEYS = { blanket: 'mins_blanket_locs', washer: 'mins_washer_locs', dryer: 'mins_dryer_locs', sterilizer: 'mins_sterilizer_locs', heatsealer: 'mins_heatsealer_locs', pan: 'mins_pan_locs' };
+    const EQ_DEL_KEYS   = { blanket: 'mins_blanket_del', washer: 'mins_washer_del', dryer: 'mins_dryer_del', sterilizer: 'mins_sterilizer_del', heatsealer: 'mins_heatsealer_del', pan: 'mins_pan_del' };
     function loadEqData(mode) { try { return JSON.parse(localStorage.getItem(EQ_STORE_KEYS[mode])) || []; } catch(e) { return []; } }
     function loadEqDeleted(mode) { try { return new Set(JSON.parse(localStorage.getItem(EQ_DEL_KEYS[mode])) || []); } catch(e) { return new Set(); } }
     function saveEqData(mode) {
@@ -2345,9 +2345,20 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
             }
         });
     })();
+    // Pan Location: eq-style persistence (same as blanket/washer)
+    (function(){
+        var saved = [];
+        try { saved = JSON.parse(localStorage.getItem('mins_pan_locs')) || []; } catch(e) {}
+        if (saved.length > 0) {
+            var del = window._eqDeleted ? (window._eqDeleted['pan'] || new Set()) : new Set();
+            db.pan = saved.filter(function(r) { return !del.has(r['Unit S/N']); });
+        }
+        // Otherwise db_pan base is used; applyPanOverrides() runs in init()
+    })();
 
     let eqEditTarget = null;
     let eqEditMode   = null;    
+
 
     function savePanOverrides() {
         try {
@@ -2432,8 +2443,8 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         // Show/hide Add button
         const addBtn = document.getElementById('addNewBtn');
         const diagModes = ['bht','gen5','tangent','ken','bandeli','platypus','hippopotamus','pan_alarms'];
-        const eqModes = ['blanket','washer','dryer','sterilizer','heatsealer'];
-        if ((mode === 'parts' || mode === 'pan' || mode === 'inv601' || eqModes.includes(mode)) && !filterValue) {
+        const eqModes = ['blanket','washer','dryer','sterilizer','heatsealer','pan'];
+        if ((mode === 'parts' || mode === 'inv601' || mode === 'out' || eqModes.includes(mode)) && !filterValue) {
             addBtn.style.display = 'flex';
             addBtn.innerHTML = '<i class="ph-bold ph-plus"></i> Add';
             addBtn.onclick = handleAddNew;
@@ -2559,90 +2570,65 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
                     t = (item.PartID || '') + ' — ' + (item.Description || '');
                 }
 
-                // Card body (short tap → detail; 3-sec hold → edit)
-                const body = document.createElement('div');
+                // Card body
+                var body = document.createElement('div');
                 body.className = 'data-card-body';
-                body.innerHTML = `<div class="data-title">${t}</div><div class="data-sub">${subtitle}</div>`;
+                body.innerHTML = '<div class="data-title">' + t + '</div><div class="data-sub">' + subtitle + '</div>';
 
                 card.appendChild(body);
 
-                // ── 3-second hold-to-edit ──────────────────────────────
-                (function(it, capturedMode) {
+                // ── 2-second hold-to-edit ──────────────────────────────
+                (function(it, capturedMode, cardEl) {
                     var holdTimer = null;
-                    var holdStart = 0;
-                    var startX = 0, startY = 0;
-                    var holding = false;
-                    var HOLD_DURATION = 3000;
-                    var MOVE_THRESHOLD = 30; // generous threshold for desktop
+                    var holdFired = false;
+                    var t0 = 0;
 
-                    function startHold(x, y) {
-                        startX = x; startY = y;
-                        holdStart = Date.now();
-                        holding = true;
-                        card.style.transition = 'box-shadow 3s linear, outline-color 0s';
-                        card.style.outline = '2.5px solid #3b82f6';
-                        card.style.boxShadow = '0 0 0 4px rgba(59,130,246,0.25)';
-                        holdTimer = setTimeout(function() {
-                            holding = false;
-                            holdTimer = null;
-                            card.style.outline = '';
-                            card.style.boxShadow = '';
-                            card.style.transition = '';
-                            if (navigator.vibrate) navigator.vibrate(50);
-                            openPartAction(it, card, capturedMode);
-                        }, HOLD_DURATION);
+                    function doEdit() {
+                        holdFired = true;
+                        cardEl.style.outline = '';
+                        if (navigator.vibrate) navigator.vibrate(50);
+                        openPartAction(it, cardEl, capturedMode);
+                    }
+
+                    function startHold() {
+                        holdFired = false;
+                        t0 = Date.now();
+                        cardEl.style.outline = '2.5px solid #3b82f6';
+                        holdTimer = setTimeout(doEdit, 2000);
                     }
 
                     function cancelHold() {
-                        holding = false;
                         if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
-                        card.style.outline = '';
-                        card.style.boxShadow = '';
-                        card.style.transition = '';
-                    }
-
-                    function hasMoved(x, y) {
-                        return Math.abs(x - startX) > MOVE_THRESHOLD ||
-                               Math.abs(y - startY) > MOVE_THRESHOLD;
+                        cardEl.style.outline = '';
                     }
 
                     // ── Touch (mobile) ──
-                    card.addEventListener('touchstart', function(e) {
-                        startHold(e.touches[0].clientX, e.touches[0].clientY);
-                    }, { passive: true });
-
-                    card.addEventListener('touchmove', function(e) {
-                        if (holdTimer && hasMoved(e.touches[0].clientX, e.touches[0].clientY)) cancelHold();
-                    }, { passive: true });
-
-                    card.addEventListener('touchend', function(e) {
-                        var elapsed = Date.now() - holdStart;
+                    cardEl.addEventListener('touchstart', function() {
+                        startHold();
+                    }, {passive: true});
+                    cardEl.addEventListener('touchmove', function() {
                         cancelHold();
-                        if (elapsed < 600) showDetails(it, capturedMode);
+                    }, {passive: true});
+                    cardEl.addEventListener('touchend', function() {
+                        var elapsed = Date.now() - t0;
+                        cancelHold();
+                        if (!holdFired && elapsed < 500) showDetails(it, capturedMode);
                     });
-
-                    card.addEventListener('touchcancel', function() { cancelHold(); });
+                    cardEl.addEventListener('touchcancel', function() { cancelHold(); });
 
                     // ── Mouse (desktop) ──
-                    card.addEventListener('mousedown', function(e) {
+                    cardEl.addEventListener('mousedown', function(e) {
                         if (e.button !== 0) return;
-                        startHold(e.clientX, e.clientY);
+                        startHold();
                     });
-
-                    card.addEventListener('mousemove', function(e) {
-                        // only cancel if moved significantly while holding
-                        if (holdTimer && hasMoved(e.clientX, e.clientY)) cancelHold();
-                    });
-
-                    card.addEventListener('mouseup', function(e) {
-                        var elapsed = Date.now() - holdStart;
+                    cardEl.addEventListener('mouseup', function() {
+                        var elapsed = Date.now() - t0;
                         cancelHold();
-                        if (elapsed < 600) showDetails(it, capturedMode);
+                        if (!holdFired && elapsed < 500) showDetails(it, capturedMode);
                     });
-
-                    // Do NOT cancel on mouseleave — this was cancelling holds on desktop
-                    card.addEventListener('contextmenu', function(e) { e.preventDefault(); });
-                })(item, mode);
+                    cardEl.addEventListener('contextmenu', function(e) { e.preventDefault(); });
+                    // Note: no mouseleave cancel — allows slight drift on desktop
+                })(item, mode, card);
 
                 content.appendChild(card);
 
@@ -4956,24 +4942,19 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         });
     }
 
-        function openPartAction(item, cardEl, mode) {
-        // Guard state assignments against TDZ errors
+    function openPartAction(item, cardEl, mode) {
         try { _actionTarget = item; _actionRowEl = cardEl; _actionMode = mode || currentLocalMode; } catch(e) {}
         var capturedMode = mode || currentLocalMode;
 
-        // Route directly to the appropriate dedicated edit modal
-        var isLoc  = (capturedMode === 'pan' || capturedMode === 'blanket' || capturedMode === 'washer' || capturedMode === 'dryer' || capturedMode === 'sterilizer' || capturedMode === 'heatsealer');
-        var isPart = (capturedMode === 'parts' || capturedMode === 'out' || capturedMode === 'inv601');
+        // Route to the correct edit modal
+        var eqModes = ['blanket','washer','dryer','sterilizer','heatsealer','pan'];
+        var isPart  = (capturedMode === 'parts' || capturedMode === 'out' || capturedMode === 'inv601');
 
-        // Close detail modal if open, then open the right edit modal
         document.getElementById('detailModal').classList.remove('active');
 
-        if (isLoc) {
-            if (capturedMode === 'pan') {
-                openPanEditModal(item);
-            } else {
-                openEqEditModal(item, capturedMode);
-            }
+        if (eqModes.includes(capturedMode)) {
+            // pan + all equipment → same openEqEditModal (same modal, same save path)
+            openEqEditModal(item, capturedMode);
         } else if (isPart) {
             openEditModal(item);
         }
@@ -5498,12 +5479,13 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
 
     // ── Add New handlers ────────────────────────────────────────────
     function handleAddNew() {
-        if (["blanket","washer","dryer","sterilizer","heatsealer"].includes(activeMode)) {
-            openEqEditModal(null, activeMode); return;
-        }
-        if (currentLocalMode === 'pan') {
-            addNewPan();
+        var m = currentLocalMode || activeMode;
+        var eqModes = ['blanket','washer','dryer','sterilizer','heatsealer','pan'];
+        if (eqModes.includes(m)) {
+            // pan + all equipment use the same openEqEditModal
+            openEqEditModal(null, m);
         } else {
+            // parts, inv601, out → parts edit modal
             addNewPart();
         }
     }
