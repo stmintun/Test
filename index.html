@@ -715,7 +715,7 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
                 </div>
             </div>
                 <div style="text-align:center; padding: 18px 0 28px; color:#cbd5e1; font-size:0.65rem; font-family:'Inter',sans-serif; font-weight:600; letter-spacing:2px; text-transform:uppercase; user-select:none;">
-            MIN'S DATABASE PRO &nbsp;&middot;&nbsp; Rev 3.8.0 &nbsp;&middot;&nbsp; Apr 2026
+            MIN'S DATABASE PRO &nbsp;&middot;&nbsp; Rev 3.8.1 &nbsp;&middot;&nbsp; Apr 2026
         </div>
     </main>
 
@@ -815,7 +815,10 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
                 <input id="pan-room" class="edit-field-input" type="text" placeholder="e.g. Dirty Utility">
             </div>
             <div style="margin-bottom:24px;">
-                <label class="edit-field-label">Comments</label>
+                <label class="edit-field-label" style="display:flex; justify-content:space-between; align-items:center;">
+                    Comments
+                    <button type="button" onclick="openFullscreenFromEdit()" style="background:none; border:none; color:var(--primary); cursor:pointer; font-size:1.1rem; padding:0;"><i class="ph-bold ph-arrows-out-simple"></i></button>
+                </label>
                 <input id="pan-comments" class="edit-field-input" type="text" placeholder="Access notes, PINs, etc.">
             </div>
             <div style="display:flex; gap:10px;">
@@ -2770,7 +2773,11 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         // ── Read-only detail rows ──
         Object.entries(item).forEach(([k, v]) => {
             if (v !== undefined && v !== "" && k !== "_baseID") {
-                html += `<div class="detail-row"><div class="detail-lbl">${k}</div><div class="detail-val">${v}</div></div>`;
+                if (k === 'Comments' || k === 'Notes') {
+                    html += `<div class="detail-row" onclick="viewCommentFullscreen(${JSON.stringify(v).replace(/"/g, '&quot;')}, '${k}')" style="cursor:pointer; background:#f8fafc;"><div class="detail-lbl">${k} <i class="ph-bold ph-arrows-out-simple" style="float:right; margin-top:2px; color:var(--primary);"></i></div><div class="detail-val" style="white-space:pre-wrap;">${v}</div></div>`;
+                } else {
+                    html += `<div class="detail-row"><div class="detail-lbl">${k}</div><div class="detail-val">${v}</div></div>`;
+                }
             }
         });
 
@@ -4814,8 +4821,40 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         const key = _commentStorageKey(_actionTarget, _actionMode);
         const saved = localStorage.getItem(key);
         document.getElementById('commentEditorArea').value = saved !== null ? saved : (_actionTarget.Comments || _actionTarget.Notes || '');
+        document.getElementById('commentEditorArea').readOnly = false;
+        const saveBtn = document.querySelector('#commentEditorModal button[onclick="saveCommentEdit()"]');
+        if (saveBtn) saveBtn.style.display = 'flex';
+        const hintEl = document.querySelector('#commentEditorModal div:nth-child(5)');
+        if (hintEl) { hintEl.style.display = 'block'; hintEl.textContent = 'Hold and edit below - your comment is auto-saved per record.'; }
         const modal = document.getElementById('commentEditorModal');
         modal.style.display = 'flex';
+        setTimeout(() => document.getElementById('commentEditorArea').focus(), 200);
+    }
+    
+    function viewCommentFullscreen(text, title) {
+        document.getElementById('commentEditorSubtitle').textContent = title || 'Comments';
+        document.getElementById('commentEditorArea').value = text || '';
+        document.getElementById('commentEditorArea').readOnly = true;
+        const saveBtn = document.querySelector('#commentEditorModal button[onclick="saveCommentEdit()"]');
+        if (saveBtn) saveBtn.style.display = 'none';
+        const hintEl = document.querySelector('#commentEditorModal div:nth-child(5)');
+        if (hintEl) hintEl.style.display = 'none';
+        document.getElementById('commentEditorModal').style.display = 'flex';
+    }
+
+    window._inlineCommentCallback = null;
+    function openFullscreenFromEdit() {
+        document.getElementById('commentEditorSubtitle').textContent = 'Edit Comments';
+        document.getElementById('commentEditorArea').value = document.getElementById('pan-comments').value;
+        document.getElementById('commentEditorArea').readOnly = false;
+        const saveBtn = document.querySelector('#commentEditorModal button[onclick="saveCommentEdit()"]');
+        if (saveBtn) saveBtn.style.display = 'flex';
+        const hintEl = document.querySelector('#commentEditorModal div:nth-child(5)');
+        if (hintEl) { hintEl.style.display = 'block'; hintEl.textContent = 'Notes taken here will be copied back to the edit form.'; }
+        window._inlineCommentCallback = function(text) {
+            document.getElementById('pan-comments').value = text;
+        };
+        document.getElementById('commentEditorModal').style.display = 'flex';
         setTimeout(() => document.getElementById('commentEditorArea').focus(), 200);
     }
 
@@ -4823,13 +4862,19 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         document.getElementById('commentEditorModal').style.display = 'none';
         _commentEditItem = null;
         _commentEditMode = null;
+        window._inlineCommentCallback = null;
     }
 
     function saveCommentEdit() {
         const text = document.getElementById('commentEditorArea').value;
-        if (!_commentEditItem) { closeCommentEditor(); return; }
-        const key = _commentStorageKey(_commentEditItem, _commentEditMode);
-        if (text.trim()) { localStorage.setItem(key, text); } else { localStorage.removeItem(key); }
+        if (window._inlineCommentCallback) {
+            window._inlineCommentCallback(text);
+            window._inlineCommentCallback = null;
+        } else {
+            if (!_commentEditItem) { closeCommentEditor(); return; }
+            const key = _commentStorageKey(_commentEditItem, _commentEditMode);
+            if (text.trim()) { localStorage.setItem(key, text); } else { localStorage.removeItem(key); }
+        }
         const toast = document.createElement('div');
         toast.style.cssText = 'position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:#1e293b;color:white;padding:10px 24px;border-radius:30px;font-size:0.85rem;font-weight:700;font-family:Inter,sans-serif;box-shadow:0 4px 20px rgba(0,0,0,0.2);z-index:10000;display:flex;align-items:center;gap:8px;white-space:nowrap;';
         toast.innerHTML = '<i class="ph-fill ph-check-circle" style="color:#34d399;font-size:1.1rem;"></i> Comment saved';
