@@ -2457,7 +2457,7 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         const addBtn = document.getElementById('addNewBtn');
         const diagModes = ['bht','gen5','tangent','ken','bandeli','platypus','hippopotamus','pan_alarms'];
         const eqModes = ['blanket','washer','dryer','sterilizer','heatsealer','pan'];
-        if ((mode === 'parts' || mode === 'inv601' || mode === 'out' || eqModes.includes(mode)) && !filterValue) {
+        if (mode === 'parts' || mode === 'inv601' || mode === 'out' || eqModes.includes(mode)) {
             addBtn.style.display = 'flex';
             addBtn.innerHTML = '<i class="ph-bold ph-plus"></i> Add';
             addBtn.onclick = handleAddNew;
@@ -2471,7 +2471,7 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         }
         
         const backBtn = document.querySelector('.back-btn');
-        if (filterValue && ['bht', 'gen5', 'bandeli', 'platypus', 'hippopotamus', 'tangent', 'ken'].includes(mode)) {
+        if (filterValue && (['bht', 'gen5', 'bandeli', 'platypus', 'hippopotamus', 'tangent', 'ken'].includes(mode) || eqModes.includes(mode))) {
             backBtn.innerHTML = `<i class="ph-bold ph-arrow-left"></i> Folders`;
             backBtn.onclick = () => {
                 document.getElementById('localSearch').value = '';
@@ -2491,6 +2491,8 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         
         currentLocalList = list;
         currentLocalMode = mode;
+        window._currentFilterKey = filterKey;
+        window._currentFilterValue = filterValue;
         
         document.getElementById('localSearchWrapper').style.display = 'block';
         document.getElementById('localSearch').value = '';
@@ -2555,6 +2557,22 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
                             <div class="drive-lbl">
                                 ${cat}
                                 <div class="expiry-badge" style="background:var(--bg); color:var(--text-muted); border:1px solid #e2e8f0;">${count} Alarms</div>
+                            </div>
+                            <i class="ph-bold ph-caret-right" style="color:#cbd5e1"></i>
+                        </div>
+                    `;
+                });
+                return;
+            } else if (['pan', 'blanket', 'washer', 'dryer', 'sterilizer', 'heatsealer'].includes(mode)) {
+                const hospitals = [...new Set(list.map(item => item.Hospital || 'Unknown Hospital'))].sort();
+                hospitals.forEach(hosp => {
+                    const count = list.filter(item => (item.Hospital || 'Unknown Hospital') === hosp).length;
+                    content.innerHTML += `
+                        <div class="drive-folder" style="border-color:var(--success)" onclick="openMode('${mode}', 'Hospital', '${hosp}')">
+                            <i class="ph-fill ph-hospital drive-icon" style="color:var(--success)"></i>
+                            <div class="drive-lbl">
+                                ${hosp}
+                                <div class="expiry-badge" style="background:var(--bg); color:var(--text-muted); border:1px solid #e2e8f0;">${count} Units</div>
                             </div>
                             <i class="ph-bold ph-caret-right" style="color:#cbd5e1"></i>
                         </div>
@@ -5085,7 +5103,7 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         eqEditTarget = item || null;
         eqEditMode   = mode;
         document.getElementById('pan-sn').value       = item ? (item['Unit S/N'] || '') : '';
-        document.getElementById('pan-hospital').value = item ? (item.Hospital || '') : '';
+        document.getElementById('pan-hospital').value = item ? (item.Hospital || '') : (window._currentFilterKey === 'Hospital' && window._currentFilterValue ? window._currentFilterValue : '');
         document.getElementById('pan-block').value    = item ? (item.Block || '') : '';
         document.getElementById('pan-ward').value     = item ? (item.Ward || '') : '';
         document.getElementById('pan-level').value    = item ? (item.Level || '') : '';
