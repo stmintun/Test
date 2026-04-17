@@ -2368,22 +2368,34 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
     }
 
     function applyPanOverrides() {
+        var existingSNs = new Set();
         db.pan.forEach((p, i) => {
+            existingSNs.add(p['Unit S/N']);
             if (panEdits[p['Unit S/N']]) Object.assign(db.pan[i], panEdits[p['Unit S/N']]);
         });
+        for (var sn in panEdits) {
+            if (!existingSNs.has(sn)) {
+                db.pan.push(panEdits[sn]);
+            }
+        }
         if (panDeleted.size > 0) {
             window.db.pan = db.pan.filter(p => !panDeleted.has(p['Unit S/N']));
         }
     }
 
     function applyPartsOverrides() {
-        // Apply edits
+        // Apply edits — key is PartID::Location composite to handle duplicate PartIDs
         db.parts.forEach((p, i) => {
-            if (partsEdits[p.PartID]) Object.assign(db.parts[i], partsEdits[p.PartID]);
+            const key = (p.PartID || '') + '::' + (p.Location || '');
+            if (partsEdits[key]) {
+                const override = Object.assign({}, partsEdits[key]);
+                Object.assign(db.parts[i], override);
+            }
         });
-        // Remove deleted
+        // Remove deleted — composite key PartID::Location
         if (partsDeleted.size > 0) {
-            window.db.parts = db.parts.filter(p => !partsDeleted.has(p.PartID));
+            db.parts = db.parts.filter(p => !partsDeleted.has((p.PartID || '') + '::' + (p.Location || '')));
+            window.db.parts = db.parts;
             window.db.out = db.parts.filter(p => !p.Stock || parseInt(p.Stock) === 0);
         }
     }
@@ -2400,7 +2412,6 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         if (!masterDrive['general']) masterDrive['general'] = [];
         if (!masterDrive['iqoq']) masterDrive['iqoq'] = [];
         if (!masterDrive['manuals']) masterDrive['manuals'] = [];
-        applyPartsOverrides();
         applyPanOverrides();
 
         // Merge 602 base data into db.parts
@@ -2415,6 +2426,8 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
                 db.parts.push(cp);
             }
         });
+        
+        applyPartsOverrides();
         
         document.getElementById('b-parts').innerText = db.parts.length || 0;
         document.getElementById('b-out').innerText = (db.parts.filter(p => p.hasOwnProperty('Stock') && (p.Stock === '' || p.Stock === null || p.Stock === undefined || parseInt(p.Stock) === 0)).length) || 0;
@@ -2577,57 +2590,15 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
 
                 card.appendChild(body);
 
-                // ── 2-second hold-to-edit ──────────────────────────────
+                // ── Use same long-press system as Pan/Equipment cards ──
                 (function(it, capturedMode, cardEl) {
-                    var holdTimer = null;
-                    var holdFired = false;
-                    var t0 = 0;
-
-                    function doEdit() {
-                        holdFired = true;
-                        cardEl.style.outline = '';
-                        if (navigator.vibrate) navigator.vibrate(50);
-                        openPartAction(it, cardEl, capturedMode);
-                    }
-
-                    function startHold() {
-                        holdFired = false;
-                        t0 = Date.now();
-                        cardEl.style.outline = '2.5px solid #3b82f6';
-                        holdTimer = setTimeout(doEdit, 2000);
-                    }
-
-                    function cancelHold() {
-                        if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
-                        cardEl.style.outline = '';
-                    }
-
-                    // ── Touch (mobile) ──
-                    cardEl.addEventListener('touchstart', function() {
-                        startHold();
-                    }, {passive: true});
-                    cardEl.addEventListener('touchmove', function() {
-                        cancelHold();
-                    }, {passive: true});
-                    cardEl.addEventListener('touchend', function() {
-                        var elapsed = Date.now() - t0;
-                        cancelHold();
-                        if (!holdFired && elapsed < 500) showDetails(it, capturedMode);
+                    // Normal tap → show details
+                    cardEl.addEventListener('click', function() {
+                        if (Date.now() - (window._lastHoldFire || 0) < 400) return;
+                        showDetails(it, capturedMode);
                     });
-                    cardEl.addEventListener('touchcancel', function() { cancelHold(); });
-
-                    // ── Mouse (desktop) ──
-                    cardEl.addEventListener('mousedown', function(e) {
-                        if (e.button !== 0) return;
-                        startHold();
-                    });
-                    cardEl.addEventListener('mouseup', function() {
-                        var elapsed = Date.now() - t0;
-                        cancelHold();
-                        if (!holdFired && elapsed < 500) showDetails(it, capturedMode);
-                    });
-                    cardEl.addEventListener('contextmenu', function(e) { e.preventDefault(); });
-                    // Note: no mouseleave cancel — allows slight drift on desktop
+                    // Long press → action sheet (Edit / Delete / Comment)
+                    attachLongPress(cardEl, it, capturedMode);
                 })(item, mode, card);
 
                 content.appendChild(card);
@@ -2780,7 +2751,7 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
 
         // ── Read-only detail rows ──
         Object.entries(item).forEach(([k, v]) => {
-            if (v !== undefined && v !== "") {
+            if (v !== undefined && v !== "" && k !== "_baseID") {
                 html += `<div class="detail-row"><div class="detail-lbl">${k}</div><div class="detail-val">${v}</div></div>`;
             }
         });
@@ -4124,6 +4095,8 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
     // Apply 601 Overrides
     (function(){
         window._inv601Data = window._inv601Base.slice();
+        // add custom
+        inv601Custom.forEach(c => window._inv601Data.push(c));
         // apply edits
         window._inv601Data.forEach(p => {
             const key = p.PartID + '::' + p.Location;
@@ -4134,8 +4107,6 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
                 p.Stock = inv601Edits[key].Stock;
             }
         });
-        // add custom
-        inv601Custom.forEach(c => window._inv601Data.push(c));
         // remove deleted
         window._inv601Data = window._inv601Data.filter(p => !inv601Deleted.has(p.PartID + '::' + p.Location));
     })();
@@ -4847,7 +4818,7 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
     }
 
 
-        function attachLongPress(cardEl, item) {
+        function attachLongPress(cardEl, item, mode) {
         let holdTimer = null;
         let holdStarted = 0;
         let startX = 0, startY = 0;
@@ -4877,7 +4848,7 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
                 cardEl.classList.remove('holding');
                 window._lastHoldFire = Date.now();
                 if (navigator.vibrate) navigator.vibrate(40);
-                openPartAction(item, cardEl);
+                openPartAction(item, cardEl, mode);
             }, HOLD_MS);
         }
 
@@ -4946,17 +4917,21 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         try { _actionTarget = item; _actionRowEl = cardEl; _actionMode = mode || currentLocalMode; } catch(e) {}
         var capturedMode = mode || currentLocalMode;
 
-        // Route to the correct edit modal
         var eqModes = ['blanket','washer','dryer','sterilizer','heatsealer','pan'];
         var isPart  = (capturedMode === 'parts' || capturedMode === 'out' || capturedMode === 'inv601');
 
         document.getElementById('detailModal').classList.remove('active');
 
         if (eqModes.includes(capturedMode)) {
-            // pan + all equipment → same openEqEditModal (same modal, same save path)
-            openEqEditModal(item, capturedMode);
+            // pan + all equipment → show action sheet
+            var titleEl = document.getElementById('partActionTitle');
+            if (titleEl) titleEl.textContent = (item['Unit S/N'] || '') + (item.Hospital ? ' — ' + item.Hospital : '');
+            document.getElementById('partActionSheet').classList.add('active');
         } else if (isPart) {
-            openEditModal(item);
+            // 602 / 601 / out → show action sheet with Edit Part label
+            var titleEl = document.getElementById('partActionTitle');
+            if (titleEl) titleEl.textContent = (item.PartID || '') + (item.Description ? ' — ' + item.Description : '');
+            document.getElementById('partActionSheet').classList.add('active');
         }
     }
 
@@ -4996,8 +4971,9 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
             const activeDB = is601 ? window._inv601Data : db.parts;
             const newPID = document.getElementById('inline-partid').value.trim();
             if (!newPID) { alert('Part ID is required.'); return; }
-            const idx = activeDB.findIndex(p => p.PartID === _actionTarget.PartID);
+            const idx = activeDB.findIndex(p => p.PartID === _actionTarget.PartID && p.Location === _actionTarget.Location);
             if (idx !== -1) {
+                const oldKey = (_actionTarget.PartID || '') + '::' + (_actionTarget.Location || '');
                 activeDB[idx].PartID      = newPID;
                 activeDB[idx].Description = document.getElementById('inline-desc').value.trim();
                 activeDB[idx].Location    = document.getElementById('inline-loc').value.trim();
@@ -5005,11 +4981,10 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
                 
                 const rec = activeDB[idx];
                 if (is601) {
-                    const key = _actionTarget.PartID + '::' + _actionTarget.Location;
-                    inv601Edits[key] = { PartID: rec.PartID, Description: rec.Description, Location: rec.Location, Stock: rec.Stock };
+                    inv601Edits[oldKey] = { PartID: rec.PartID, Description: rec.Description, Location: rec.Location, Stock: rec.Stock };
                     saveInv601Overrides();
                 } else {
-                    partsEdits[_actionTarget.PartID] = { PartID: rec.PartID, Description: rec.Description, Location: rec.Location, Stock: rec.Stock };
+                    partsEdits[oldKey] = { PartID: rec.PartID, Description: rec.Description, Location: rec.Location, Stock: rec.Stock };
                     savePartsOverrides();
                 }
             }
@@ -5054,14 +5029,14 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         } else if (isPart) {
             const is601 = _actionMode === 'inv601';
             const activeDB = is601 ? window._inv601Data : db.parts;
-            const idx = activeDB.findIndex(p => p.PartID === _actionTarget.PartID);
+            const idx = activeDB.findIndex(p => p.PartID === _actionTarget.PartID && p.Location === _actionTarget.Location);
             if (idx !== -1) {
                 activeDB.splice(idx, 1);
                 if (is601) {
-                    inv601Deleted.add(_actionTarget.PartID + '::' + _actionTarget.Location);
+                    inv601Deleted.add((_actionTarget.PartID || '') + '::' + (_actionTarget.Location || ''));
                     saveInv601Overrides();
                 } else {
-                    partsDeleted.add(_actionTarget.PartID);
+                    partsDeleted.add((_actionTarget.PartID || '') + '::' + (_actionTarget.Location || ''));
                     savePartsOverrides();
                 }
             }
@@ -5081,24 +5056,22 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
     }
 
     function openEditFromAction() {
-        document.getElementById('partActionSheet').classList.remove('active');
-        if (!_actionTarget) return;
-        if (['blanket','washer','dryer','sterilizer','heatsealer'].includes(_actionMode)) {
-            openEqEditModal(_actionTarget, _actionMode);
-        } else if (_actionMode === 'pan') {
-            openPanEditModal(_actionTarget);
-        } else {
-            openEditModal(_actionTarget);
-        }
+        try {
+            document.getElementById('partActionSheet').classList.remove('active');
+            if (!_actionTarget) return;
+            if (['blanket','washer','dryer','sterilizer','heatsealer','pan'].includes(_actionMode)) {
+                openEqEditModal(_actionTarget, _actionMode);
+            } else {
+                openEditModal(_actionTarget);
+            }
+        } catch(e) { alert("Error opening edit modal: " + e.message); }
     }
 
     function deleteFromAction() {
         document.getElementById('partActionSheet').classList.remove('active');
         if (!_actionTarget || !_actionRowEl) return;
-        if (['blanket','washer','dryer','sterilizer','heatsealer'].includes(_actionMode)) {
+        if (['blanket','washer','dryer','sterilizer','heatsealer','pan'].includes(_actionMode)) {
             confirmDeleteEq(_actionTarget, _actionRowEl, _actionMode);
-        } else if (_actionMode === 'pan') {
-            confirmDeletePan(_actionTarget, _actionRowEl);
         } else {
             confirmDeletePart(_actionTarget, _actionRowEl);
         }
@@ -5176,6 +5149,8 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
 
     function openPanEditModal(item) {
         panEditTarget = item;
+        eqEditMode = null;
+        eqEditTarget = null;
         document.getElementById('pan-sn').value       = item['Unit S/N'] || '';
         document.getElementById('pan-hospital').value = item.Hospital || '';
         document.getElementById('pan-block').value    = item.Block || '';
@@ -5211,27 +5186,17 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         document.getElementById('editPanModal').classList.remove('active');
         var delBtn = document.getElementById('deletePanBtn');
         if (delBtn) delBtn.style.display = 'none';
-        if (mode === 'pan') {
-            var sn = item['Unit S/N'];
-            panDeleted.add(sn);
-            var idx = db.pan.findIndex(function(p){ return p['Unit S/N'] === sn; });
-            if (idx !== -1) db.pan.splice(idx, 1);
-            savePanOverrides();
-            currentLocalList = db.pan;
-            renderLocalList(db.pan, 'pan', false);
-            var bEl = document.getElementById('b-pan');
-            if (bEl) bEl.innerText = db.pan.length;
-        } else {
-            var sn = item['Unit S/N'];
-            if (window._eqDeleted[mode]) window._eqDeleted[mode].add(sn);
-            var idx = (db[mode] || []).findIndex(function(p){ return p['Unit S/N'] === sn; });
-            if (idx !== -1) db[mode].splice(idx, 1);
-            saveEqData(mode);
-            currentLocalList = db[mode];
-            renderLocalList(db[mode], mode, false);
-            var bEl = document.getElementById('b-' + mode);
-            if (bEl) bEl.innerText = (db[mode] || []).length;
-        }
+
+        var sn = item['Unit S/N'];
+        if (window._eqDeleted[mode]) window._eqDeleted[mode].add(sn);
+        var idx = (db[mode] || []).findIndex(function(p){ return p['Unit S/N'] === sn; });
+        if (idx !== -1) db[mode].splice(idx, 1);
+        saveEqData(mode);
+        currentLocalList = db[mode];
+        renderLocalList(db[mode], mode, false);
+        var bEl = document.getElementById('b-' + mode);
+        if (bEl) bEl.innerText = (db[mode] || []).length;
+
         panEditTarget = null; eqEditTarget = null; eqEditMode = null; _actionTarget = null;
     }
 
@@ -5335,10 +5300,10 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         var idx = activeDB.findIndex(function(p){ return p.PartID === item.PartID && p.Location === item.Location; });
         if (idx !== -1) activeDB.splice(idx, 1);
         if (is601) {
-            inv601Deleted.add(item.PartID + '::' + item.Location);
+            inv601Deleted.add((item.PartID || '') + '::' + (item.Location || ''));
             saveInv601Overrides();
         } else {
-            partsDeleted.add(item.PartID);
+            partsDeleted.add((item.PartID || '') + '::' + (item.Location || ''));
             savePartsOverrides();
         }
         var list = (mode === 'out') ? db.parts.filter(function(p){ return !p.Stock || parseInt(p.Stock) === 0; }) : activeDB;
@@ -5368,6 +5333,7 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
                 Location:    document.getElementById('edit-loc').value.trim(),
                 Stock:       parseInt(document.getElementById('edit-stock').value) || 0
             };
+            newPart._baseID = newPartID;
             
             activeDB.push(newPart);
             
@@ -5400,22 +5366,33 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         const newLoc    = document.getElementById('edit-loc').value.trim();
         const newStock  = parseInt(document.getElementById('edit-stock').value) || 0;
 
-        const idx = activeDB.findIndex(p => p.PartID === editTarget.PartID && p.Location === editTarget.Location);
+        let idx = activeDB.findIndex(p => p.PartID === editTarget.PartID && p.Location === editTarget.Location);
+        
+        // Fallback: Try object reference if properties fail
+        if (idx === -1) idx = activeDB.indexOf(editTarget);
+
+        const oldKey = (editTarget.PartID || '') + '::' + (editTarget.Location || '');
+        
         if (idx !== -1) {
             activeDB[idx].PartID = newPartID;
             activeDB[idx].Description = newDesc;
             activeDB[idx].Location = newLoc;
             activeDB[idx].Stock = newStock;
+        } else {
+            // Unlikely fallback, mutate directly
+            editTarget.PartID = newPartID;
+            editTarget.Description = newDesc;
+            editTarget.Location = newLoc;
+            editTarget.Stock = newStock;
+        }
             
             if (is601) {
-                const key = editTarget.PartID + '::' + editTarget.Location;
-                inv601Edits[key] = { PartID: newPartID, Description: newDesc, Location: newLoc, Stock: newStock };
+                inv601Edits[oldKey] = { PartID: newPartID, Description: newDesc, Location: newLoc, Stock: newStock };
                 saveInv601Overrides();
             } else {
-                partsEdits[newPartID] = { PartID: newPartID, Description: newDesc, Location: newLoc, Stock: newStock };
+                partsEdits[oldKey] = { PartID: newPartID, Description: newDesc, Location: newLoc, Stock: newStock };
                 savePartsOverrides();
             }
-        }
 
         document.getElementById('editPartModal').classList.remove('active');
         editTarget = null;
@@ -5443,10 +5420,10 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         if (idx !== -1) activeDB.splice(idx, 1);
         
         if (is601) {
-            inv601Deleted.add(item.PartID + '::' + item.Location);
+            inv601Deleted.add((item.PartID || '') + '::' + (item.Location || ''));
             saveInv601Overrides();
         } else {
-            partsDeleted.add(item.PartID);
+            partsDeleted.add((item.PartID || '') + '::' + (item.Location || ''));
             savePartsOverrides();
         }
 
@@ -5482,7 +5459,7 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         var m = currentLocalMode || activeMode;
         var eqModes = ['blanket','washer','dryer','sterilizer','heatsealer','pan'];
         if (eqModes.includes(m)) {
-            // pan + all equipment use the same openEqEditModal
+            // all equipment use the same openEqEditModal
             openEqEditModal(null, m);
         } else {
             // parts, inv601, out → parts edit modal
