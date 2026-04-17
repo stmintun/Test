@@ -4745,8 +4745,10 @@ window.db = { parts: db_parts, bht: db_bht, gen5: db_gen5, tangent: db_tan, pan:
         var day  = Math.floor((now - start) / 864e5);
         var v    = verses[day % verses.length];
 
-        document.getElementById('dailyVerseText').textContent = '\u201c' + v.t + '\u201d';
-        document.getElementById('dailyVerseRef').textContent  = '\u2014 ' + v.r + ' (Recovery Version)';
+        var verseTextEl = document.getElementById('dailyVerseText');
+        var verseRefEl = document.getElementById('dailyVerseRef');
+        if (verseTextEl) verseTextEl.textContent = '\u201c' + v.t + '\u201d';
+        if (verseRefEl) verseRefEl.textContent  = '\u2014 ' + v.r + ' (Recovery Version)';
     })();
 
     
